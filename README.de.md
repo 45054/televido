@@ -27,13 +27,13 @@ Televido bietet einen integrierten Videoplayer zum Abspielen der Inhalte. Darüb
 
 ## FritzTV (FRITZ!Box Cable DVB-C)
 
-Televido kann die DVB-C-Sender einer FRITZ!Box Cable (z. B. 6490, 6591, 6660, 6690) im Heimnetz abspielen. Die Funktion wird in den Einstellungen unter *FritzTV* aktiviert; anschließend listet der neue Reiter *FritzTV* die HD-, SD- und Radiosender der FRITZ!Box auf. Die Radiosender lassen sich in den Einstellungen ausblenden.
+Televido kann die DVB-C-Sender einer FRITZ!Box Cable (z. B. 6490, 6591, 6660, 6690) im Heimnetz abspielen. Die Funktion wird in den Einstellungen unter *FritzTV* aktiviert; anschließend listet der neue Reiter *FritzTV* die TV- und Radiosender der FRITZ!Box auf. Standardmäßig erscheint jeder TV-Sender einmal in der besten verfügbaren Qualität (`tv.m3u`); wahlweise lassen sich HD- und SD-Sender getrennt anzeigen. Die Radiosender lassen sich in den Einstellungen ausblenden.
 
 - **Voraussetzungen:** [mpv](https://mpv.io/) muss installiert sein (FritzTV nutzt nicht den integrierten Player) und die FRITZ!Box muss einen Sendersuchlauf abgeschlossen haben (DVB-C-Einstellungen in der Benutzeroberfläche der FRITZ!Box). Verschlüsselte Sender können nicht abgespielt werden.
 - **Adresse:** Standardmäßig wird `fritz.box` verwendet. Falls das im eigenen Netz nicht aufgelöst wird, die IP-Adresse der FRITZ!Box eintragen (z. B. `192.168.178.1`).
 - **mpv-Argumente:** Die an mpv übergebenen Argumente lassen sich in den Einstellungen bearbeiten. Die Voreinstellungen sind auf die FRITZ!Box abgestimmt (`--rtsp-transport=udp` ist notwendig, die FRITZ!Box unterstützt kein RTSP über TCP).
 - **Ein Stream pro Gerät:** Die FRITZ!Box liefert nur einen Sender pro Gerät, deshalb beendet der Start eines Senders den vorherigen.
-- **Senderlogos** werden von AVM (`https://download.avm.de/tv/logos/`) heruntergeladen und zwischengespeichert.
+- **Senderlogos** werden von AVM heruntergeladen und zwischengespeichert: von `https://tv.avm.de/tvapp/logos/` wie in der Benutzeroberfläche der FRITZ!Box, ersatzweise von `https://download.avm.de/tv/logos/`.
 - **Ruckeln:** Die Streams kommen per UDP. Ruckelt das Bild, ist eventuell der maximale Empfangspuffer des Kernels zu klein für die voreingestellte `buffer_size` (4 MiB):
   ```
   echo 'net.core.rmem_max=4194304' | sudo tee /etc/sysctl.d/90-televido-rtp.conf && sudo sysctl --system

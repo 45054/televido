@@ -86,6 +86,13 @@ template $TvPreferencesDialog: Adw.PreferencesDialog {
       }
 
       Adw.SwitchRow {
+        title: _("Separate HD and SD lists");
+        subtitle: _("Otherwise every channel is listed once in the best available quality");
+        active: bind template.fritztv-separate-hd-sd bidirectional;
+        sensitive: bind template.fritztv-enabled;
+      }
+
+      Adw.SwitchRow {
         title: _("Show radio channels");
         active: bind template.fritztv-show-radio bidirectional;
         sensitive: bind template.fritztv-enabled;

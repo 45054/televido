@@ -16,7 +16,7 @@ use crate::{
     utils::{show_error, spawn, tokio},
 };
 
-use super::{ChannelList, FritzChannel, FritzChannels, LogoIndex};
+use super::{ChannelList, FritzChannel, FritzChannels, LogoIndex, LogoSources};
 
 const LOGO_SIZE: i32 = 48;
 
@@ -30,6 +30,10 @@ mod imp {
         stack: TemplateChild<gtk::Stack>,
         #[template_child]
         error_page: TemplateChild<adw::StatusPage>,
+        #[template_child]
+        tv_group: TemplateChild<adw::PreferencesGroup>,
+        #[template_child]
+        tv_list: TemplateChild<gtk::ListBox>,
         #[template_child]
         hd_group: TemplateChild<adw::PreferencesGroup>,
         #[template_child]
@@ -63,7 +67,7 @@ mod imp {
 
             let fritzbox = TvApplication::get().fritzbox();
             let address = settings.fritzbox_address();
-            let lists = ChannelList::selected(settings.fritztv_show_radio());
+            let lists = selected_lists();
             self.lists.replace(lists.clone());
             let result = tokio(async move { fritzbox.channels(&address, &lists).await }).await;
 
@@ -89,11 +93,15 @@ mod imp {
             }
         }
 
-        /// Fills the channel lists and returns the logo placeholders by channel name.
-        fn show_channels(&self, channels: &FritzChannels) -> Vec<(String, gtk::Image)> {
+        /// Fills the channel lists and returns the logo placeholders by channel.
+        fn show_channels(
+            &self,
+            channels: &FritzChannels,
+        ) -> Vec<(ChannelList, String, gtk::Image)> {
             let mut logos = Vec::new();
 
             for (list, group, list_box) in [
+                (ChannelList::Tv, &self.tv_group, &self.tv_list),
                 (ChannelList::Hd, &self.hd_group, &self.hd_list),
                 (ChannelList::Sd, &self.sd_group, &self.sd_list),
                 (ChannelList::Radio, &self.radio_group, &self.radio_list),
@@ -110,14 +118,14 @@ mod imp {
                 for channel in channels {
                     let (row, logo) = channel_row(channel, list);
                     list_box.append(&row);
-                    logos.push((channel.name.clone(), logo));
+                    logos.push((list, channel.name.clone(), logo));
                 }
             }
 
             logos
         }
 
-        async fn load_logos(&self, logos: Vec<(String, gtk::Image)>) {
+        async fn load_logos(&self, logos: Vec<(ChannelList, String, gtk::Image)>) {
             let fritzbox = TvApplication::get().fritzbox();
 
             let cached_index = self.logo_index.borrow().clone();
@@ -139,14 +147,15 @@ mod imp {
                 }
             };
 
-            for (name, image) in logos {
-                let Some(file_name) = index.lookup(&name).map(ToOwned::to_owned) else {
+            for (list, name, image) in logos {
+                let sources = LogoSources::new(&name, list, &index);
+                if sources.is_empty() {
                     continue;
-                };
+                }
                 let fritzbox = fritzbox.clone();
 
                 spawn(async move {
-                    let data = match tokio(async move { fritzbox.logo(file_name).await }).await {
+                    let data = match tokio(async move { fritzbox.logo(sources).await }).await {
                         Ok(data) => data,
                         Err(e) => {
                             tracing::debug!("failed to load logo for “{name}”: {e:?}");
@@ -162,6 +171,16 @@ mod imp {
                         Err(e) => tracing::debug!("invalid logo for “{name}”: {e:?}"),
                     }
                 });
+            }
+        }
+
+        /// Reloads if the selected channel lists differ from the loaded ones.
+        ///
+        /// The preferences dialog rewrites the settings when it is opened.
+        fn reload_if_lists_changed(&self) {
+            if selected_lists() != *self.lists.borrow() {
+                let slf = self.to_owned();
+                spawn(async move { slf.reload().await });
             }
         }
     }
@@ -200,15 +219,15 @@ mod imp {
                 self,
                 move |_| spawn(async move { slf.reload().await })
             ));
+            settings.connect_fritztv_separate_hd_sd_changed(glib::clone!(
+                #[weak(rename_to = slf)]
+                self,
+                move |_| slf.reload_if_lists_changed()
+            ));
             settings.connect_fritztv_show_radio_changed(glib::clone!(
                 #[weak(rename_to = slf)]
                 self,
-                move |settings| {
-                    // the preferences dialog rewrites the key when it is opened
-                    if ChannelList::selected(settings.fritztv_show_radio()) != *slf.lists.borrow() {
-                        spawn(async move { slf.reload().await })
-                    }
-                }
+                move |_| slf.reload_if_lists_changed()
             ));
         }
     }
@@ -228,6 +247,14 @@ impl TvFritzView {
     }
 }
 
+fn selected_lists() -> Vec<ChannelList> {
+    let settings = TvSettings::get();
+    ChannelList::selected(
+        settings.fritztv_separate_hd_sd(),
+        settings.fritztv_show_radio(),
+    )
+}
+
 fn channel_row(channel: &FritzChannel, list: ChannelList) -> (adw::ActionRow, gtk::Image) {
     let row = adw::ActionRow::builder()
         .title(&channel.name)
@@ -238,7 +265,7 @@ fn channel_row(channel: &FritzChannel, list: ChannelList) -> (adw::ActionRow, gt
     let logo = gtk::Image::builder()
         .icon_name(match list {
             ChannelList::Radio => "audio-x-generic-symbolic",
-            ChannelList::Hd | ChannelList::Sd => "tv-symbolic",
+            ChannelList::Tv | ChannelList::Hd | ChannelList::Sd => "tv-symbolic",
         })
         .pixel_size(24)
         .width_request(LOGO_SIZE)
