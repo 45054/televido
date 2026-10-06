@@ -5,12 +5,16 @@ use std::cell::{Cell, RefCell};
 
 use adw::{glib, gtk, prelude::*, subclass::prelude::*};
 
+use gettextrs::gettext;
+
 use crate::{
+    fritzbox,
     launcher::{ExternalProgramType, ProgramSelector},
+    mpv,
     settings::TvSettings,
 };
 
-use super::live::TvLiveChannelSelector;
+use super::{live::TvLiveChannelSelector, mpv_arguments::TvMpvArgumentsPage};
 
 mod imp {
     use super::*;
@@ -23,6 +27,8 @@ mod imp {
         video_player_row: TemplateChild<adw::ActionRow>,
         #[template_child]
         video_downloader_row: TemplateChild<adw::ActionRow>,
+        #[template_child]
+        fritzbox_address_row: TemplateChild<adw::EntryRow>,
 
         #[property(get, set)]
         use_external_player: Cell<bool>,
@@ -30,6 +36,13 @@ mod imp {
         video_player_display_name: RefCell<String>,
         #[property(get)]
         video_downloader_display_name: RefCell<String>,
+
+        #[property(get, set)]
+        fritztv_enabled: Cell<bool>,
+        #[property(get)]
+        mpv_missing: Cell<bool>,
+        #[property(get)]
+        mpv_arguments_summary: RefCell<String>,
 
         #[property(get)]
         settings: TvSettings,
@@ -65,6 +78,39 @@ mod imp {
         async fn select_live_channels(&self, #[rest] _: &[glib::Value]) {
             self.obj().push_subpage(&TvLiveChannelSelector::new())
         }
+        #[template_callback]
+        fn edit_mpv_arguments(&self, #[rest] _: &[glib::Value]) {
+            self.obj().push_subpage(&TvMpvArgumentsPage::new())
+        }
+        #[template_callback]
+        fn apply_fritzbox_address(&self, #[rest] _: &[glib::Value]) {
+            let text = self.fritzbox_address_row.text();
+            let address = text.trim();
+
+            if address.is_empty() {
+                self.settings.reset("fritzbox-address");
+                self.fritzbox_address_row
+                    .set_text(&self.settings.fritzbox_address());
+                self.fritzbox_address_row.remove_css_class("error");
+                return;
+            }
+
+            match fritzbox::base_url(address) {
+                Ok(_) => {
+                    self.fritzbox_address_row.remove_css_class("error");
+                    self.settings.set_fritzbox_address(address);
+                }
+                Err(e) => {
+                    self.fritzbox_address_row.add_css_class("error");
+                    self.obj().add_toast(
+                        adw::Toast::builder()
+                            .title(e.to_string())
+                            .use_markup(false)
+                            .build(),
+                    );
+                }
+            }
+        }
     }
 
     impl TvPreferencesDialog {
@@ -92,6 +138,17 @@ mod imp {
 
             self.obj().notify_video_downloader_display_name();
         }
+        fn update_mpv_arguments_summary(&self) {
+            let arguments = self.settings.mpv_arguments();
+
+            *self.mpv_arguments_summary.borrow_mut() = if arguments.is_empty() {
+                gettext("No arguments")
+            } else {
+                arguments.join(" ")
+            };
+
+            self.obj().notify_mpv_arguments_summary();
+        }
     }
 
     #[glib::object_subclass]
@@ -118,6 +175,20 @@ mod imp {
             self.settings
                 .bind_use_external_player(&*self.obj(), "use-external-player")
                 .build();
+
+            self.settings
+                .bind_fritztv_enabled(&*self.obj(), "fritztv-enabled")
+                .build();
+            self.mpv_missing.set(!mpv::is_installed());
+            self.fritzbox_address_row
+                .set_text(&self.settings.fritzbox_address());
+
+            self.update_mpv_arguments_summary();
+            self.settings.connect_mpv_arguments_changed(glib::clone!(
+                #[weak(rename_to = slf)]
+                self,
+                move |_| slf.update_mpv_arguments_summary()
+            ));
 
             self.update_video_player_display_name();
             self.settings

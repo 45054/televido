@@ -6,9 +6,11 @@
 mod application;
 mod channel_icons;
 mod config;
+mod fritzbox;
 mod launcher;
 mod live;
 mod mediathek;
+mod mpv;
 mod player;
 mod preferences;
 mod settings;

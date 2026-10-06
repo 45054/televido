@@ -25,6 +25,23 @@ The presented content is provided directly by the respective television services
 
 Televido provides an integrated player for video playback. Additionally, Televido supports external programs that are installed on the user's system for video playback and download.  Currently supported players: [GNOME Videos (Totem)](https://flathub.org/apps/org.gnome.Totem), [Celluloid](https://flathub.org/apps/io.github.celluloid_player.Celluloid), [Clapper](https://flathub.org/apps/com.github.rafostar.Clapper), [Daikhan](https://flathub.org/apps/io.gitlab.daikhan.stable). Currently supported downloaders: [Parabolic](https://flathub.org/apps/org.nickvision.tubeconverter).
 
+## FritzTV (FRITZ!Box Cable DVB-C)
+
+Televido can play the DVB-C channels of a FRITZ!Box Cable (e.g. 6490, 6591, 6660, 6690) in your home network. Enable it in the preferences under *FritzTV*; a new *FritzTV* tab then lists the HD, SD and radio channels of your FRITZ!Box.
+
+- **Requirements:** [mpv](https://mpv.io/) must be installed (FritzTV doesn't use the integrated player) and the FRITZ!Box must have completed a channel scan (DVB-C settings in the FRITZ!Box web interface). Encrypted channels can't be played.
+- **Address:** `fritz.box` is used by default. If that doesn't resolve in your network, enter the IP address of your FRITZ!Box (e.g. `192.168.178.1`).
+- **mpv arguments:** the arguments passed to mpv can be edited in the preferences. The defaults are tuned for the FRITZ!Box (`--rtsp-transport=udp` is required, the FRITZ!Box doesn't support RTSP over TCP).
+- **One stream per device:** the FRITZ!Box only delivers one channel per device, so starting a channel stops the previous one.
+- **Channel logos** are downloaded from AVM (`https://download.avm.de/tv/logos/`) and cached.
+- **Stuttering:** the streams arrive via UDP. If the picture stutters, the kernel's maximum socket receive buffer may be too small for the default `buffer_size` (4 MiB):
+  ```
+  echo 'net.core.rmem_max=4194304' | sudo tee /etc/sysctl.d/90-televido-rtp.conf && sudo sysctl --system
+  ```
+  Firewalls must allow incoming UDP traffic from the FRITZ!Box.
+
+FritzTV starts mpv as a regular process and is therefore intended for native installations (e.g. distribution packages). Inside the Flatpak sandbox, mpv is not available.
+
 ## Channel logos
 
 The ARD, ORF and SRF logos were taken from [Wikimedia Commons](https://commons.wikimedia.org) and are in the public domain.

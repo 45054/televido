@@ -52,5 +52,51 @@ template $TvPreferencesDialog: Adw.PreferencesDialog {
         }
       }
     }
+
+    Adw.PreferencesGroup {
+      title: _("FritzTV");
+      description: _("Watch the DVB-C channels of a FRITZ!Box Cable with mpv. If “fritz.box” does not work, enter the IP address of your FRITZ!Box, e.g. 192.168.178.1.");
+      name: "fritztv";
+
+      Adw.ActionRow {
+        title: _("mpv is not installed");
+        subtitle: _("FritzTV needs the mpv video player");
+        visible: bind template.mpv-missing;
+
+        [prefix]
+        Gtk.Image {
+          icon-name: "dialog-warning-symbolic";
+
+          styles [
+            "warning"
+          ]
+        }
+      }
+
+      Adw.SwitchRow {
+        title: _("Show FritzTV");
+        active: bind template.fritztv-enabled bidirectional;
+      }
+
+      Adw.EntryRow fritzbox_address_row {
+        title: _("FRITZ!Box Address");
+        show-apply-button: true;
+        sensitive: bind template.fritztv-enabled;
+        apply => $apply_fritzbox_address() swapped;
+      }
+
+      Adw.ActionRow {
+        title: _("mpv Arguments");
+        subtitle: bind template.mpv-arguments-summary;
+        subtitle-lines: 1;
+        activatable: true;
+        sensitive: bind template.fritztv-enabled;
+        activated => $edit_mpv_arguments() swapped;
+
+        Gtk.Image {
+          icon-name: "go-next-symbolic";
+        }
+      }
+    }
   }
 }

@@ -14,7 +14,9 @@ use smart_default::SmartDefault;
 
 use crate::{
     config::{APP_ID, PROFILE, VERSION},
+    fritzbox::FritzBox,
     launcher::{ExternalProgram, ExternalProgramType, ProgramSelector},
+    mpv,
     player::{TvPlayer, VideoInfo},
     preferences::TvPreferencesDialog,
     settings::{TvSettings, VideoQuality},
@@ -31,6 +33,8 @@ mod imp {
     pub struct TvApplication {
         #[default(Arc::new(Zapp::new().expect("failed to initialize Zapp client")))]
         pub(super) zapp: Arc<Zapp>,
+        #[default(Arc::new(FritzBox::new().expect("failed to initialize FRITZ!Box client")))]
+        pub(super) fritzbox: Arc<FritzBox>,
         pub(super) live_channels: AsyncResource<Rc<crate::zapp::ChannelInfoList>>,
         pub(super) window: RefCell<Option<glib::WeakRef<TvWindow>>>,
         pub(super) player: RefCell<Option<glib::WeakRef<TvPlayer>>>,
@@ -54,6 +58,11 @@ mod imp {
     impl ApplicationImpl for TvApplication {
         fn activate(&self) {
             self.obj().window().present();
+        }
+
+        fn shutdown(&self) {
+            mpv::terminate();
+            self.parent_shutdown();
         }
     }
 
@@ -161,6 +170,10 @@ impl TvApplication {
 
     pub fn zapp(&self) -> Arc<Zapp> {
         self.imp().zapp.clone()
+    }
+
+    pub fn fritzbox(&self) -> Arc<FritzBox> {
+        self.imp().fritzbox.clone()
     }
 
     pub fn live_channels(&self) -> AsyncResource<Rc<crate::zapp::ChannelInfoList>> {
@@ -304,6 +317,7 @@ impl TvApplication {
         self.set_accels_for_action("window.reload", &["F5", "Reload"]);
         self.set_accels_for_action("window.show-live", &["<primary>l"]);
         self.set_accels_for_action("window.show-mediathek", &["<primary>m"]);
+        self.set_accels_for_action("window.show-fritztv", &["<primary>t"]);
     }
 
     fn show_about(&self) {

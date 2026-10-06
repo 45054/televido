@@ -3,5 +3,6 @@
 
 mod dialog;
 mod live;
+mod mpv_arguments;
 
 pub use self::dialog::TvPreferencesDialog;

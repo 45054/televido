@@ -28,7 +28,7 @@ serde = { version = "1.0.218", features = ["derive"] }
 serde_json = "1.0.138"
 smart-default = "0.7.1"
 time = { version = "0.3.37", features = ["parsing", "serde"] }
-tokio = { version = "1.43.0", features = ["fs", "time", "rt-multi-thread", "macros"] }
+tokio = { version = "1.43.0", features = ["fs", "time", "rt-multi-thread", "macros", "sync"] }
 tracing = "0.1.41"
 tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
 zbus = { version = "5.5.0", default-features = false, features = ["tokio"] }

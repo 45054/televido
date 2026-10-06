@@ -4,8 +4,8 @@
 use adw::{gio, glib, gtk, prelude::*, subclass::prelude::*};
 
 use crate::{
-    application::TvApplication, config::PROFILE, live::TvLiveView, mediathek::TvMediathekView,
-    settings::TvSettings,
+    application::TvApplication, config::PROFILE, fritzbox::TvFritzView, live::TvLiveView,
+    mediathek::TvMediathekView, settings::TvSettings,
 };
 
 mod imp {
@@ -22,6 +22,10 @@ mod imp {
         live_view: TemplateChild<TvLiveView>,
         #[template_child]
         mediathek_view: TemplateChild<TvMediathekView>,
+        #[template_child]
+        fritztv_page: TemplateChild<adw::ViewStackPage>,
+        #[template_child]
+        fritztv_view: TemplateChild<TvFritzView>,
     }
 
     #[glib::object_subclass]
@@ -38,6 +42,7 @@ mod imp {
                 match slf.stack.visible_child_name().as_deref() {
                     Some("live") => slf.live_view.reload(),
                     Some("mediathek") => slf.mediathek_view.reload(),
+                    Some("fritztv") => slf.fritztv_view.reload(),
                     _ => (),
                 }
             });
@@ -46,6 +51,9 @@ mod imp {
             });
             klass.install_action("window.show-mediathek", None, |slf, _, _| {
                 slf.imp().stack.set_visible_child_name("mediathek")
+            });
+            klass.install_action("window.show-fritztv", None, |slf, _, _| {
+                slf.imp().stack.set_visible_child_name("fritztv")
             });
         }
 
@@ -76,6 +84,11 @@ mod imp {
             settings
                 .bind_is_fullscreen(&*slf, "fullscreened")
                 .flags(gio::SettingsBindFlags::DEFAULT)
+                .build();
+            // must be bound before `visible-view`, hidden pages can't be selected
+            settings
+                .bind_fritztv_enabled(&*self.fritztv_page, "visible")
+                .flags(gio::SettingsBindFlags::GET)
                 .build();
             settings
                 .bind_visible_view(&*self.stack, "visible-child-name")
