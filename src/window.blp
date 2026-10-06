@@ -60,6 +60,15 @@ template $TvWindow: Adw.ApplicationWindow {
 
           child: $TvMediathekView mediathek_view {};
         }
+
+        Adw.ViewStackPage fritztv_page {
+          name: "fritztv";
+          title: _("FritzTV");
+          icon-name: "modem-symbolic";
+          visible: false;
+
+          child: $TvFritzView fritztv_view {};
+        }
       }
     }
 

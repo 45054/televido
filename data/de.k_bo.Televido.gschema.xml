@@ -50,5 +50,27 @@
 		<key name="live-channels" type="as">
 			<default>[]</default>
 		</key>
+		<key name="fritztv-enabled" type="b">
+			<default>false</default>
+		</key>
+		<key name="fritzbox-address" type="s">
+			<default>"fritz.box"</default>
+		</key>
+		<key name="mpv-arguments" type="as">
+			<default>[
+				"--force-window=immediate",
+				"--hwdec=auto",
+				"--rtsp-transport=udp",
+				"--deinterlace=auto",
+				"--cache=yes",
+				"--demuxer-max-bytes=64MiB",
+				"--cache-pause-initial=yes",
+				"--cache-pause-wait=1.5",
+				"--demuxer-lavf-analyzeduration=3",
+				"--demuxer-lavf-probesize=5000000",
+				"--demuxer-lavf-o=buffer_size=4194304",
+				"--msg-level=ffmpeg=fatal"
+			]</default>
+		</key>
 	</schema>
 </schemalist>

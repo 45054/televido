@@ -1,0 +1,198 @@
+// SPDX-FileCopyrightText: David Cabot <d-k-bo@mailbox.org>
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+//! DVB-C channels of a FRITZ!Box Cable.
+//!
+//! The FRITZ!Box exposes the result of its own channel scan as M3U playlists
+//! at `http://<address>/dvb/m3u/{tvhd,tvsd,radio}.m3u`. Every entry is an
+//! `rtsp://` URL which is played with mpv.
+
+mod logos;
+mod m3u;
+mod view;
+
+use std::time::Duration;
+
+use eyre::WrapErr;
+use gettextrs::gettext;
+use reqwest::{StatusCode, Url};
+
+use crate::config::{APP_ID, PROJECT_URL, VERSION};
+
+pub use self::{logos::LogoIndex, m3u::FritzChannel, view::TvFritzView};
+
+pub const DEFAULT_ADDRESS: &str = "fritz.box";
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ChannelList {
+    Hd,
+    Sd,
+    Radio,
+}
+
+impl ChannelList {
+    pub const ALL: [ChannelList; 3] = [ChannelList::Hd, ChannelList::Sd, ChannelList::Radio];
+
+    fn path(self) -> &'static str {
+        match self {
+            ChannelList::Hd => "dvb/m3u/tvhd.m3u",
+            ChannelList::Sd => "dvb/m3u/tvsd.m3u",
+            ChannelList::Radio => "dvb/m3u/radio.m3u",
+        }
+    }
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct FritzChannels {
+    pub hd: Vec<FritzChannel>,
+    pub sd: Vec<FritzChannel>,
+    pub radio: Vec<FritzChannel>,
+}
+
+impl FritzChannels {
+    pub fn get(&self, list: ChannelList) -> &[FritzChannel] {
+        match list {
+            ChannelList::Hd => &self.hd,
+            ChannelList::Sd => &self.sd,
+            ChannelList::Radio => &self.radio,
+        }
+    }
+    fn get_mut(&mut self, list: ChannelList) -> &mut Vec<FritzChannel> {
+        match list {
+            ChannelList::Hd => &mut self.hd,
+            ChannelList::Sd => &mut self.sd,
+            ChannelList::Radio => &mut self.radio,
+        }
+    }
+    pub fn is_empty(&self) -> bool {
+        self.hd.is_empty() && self.sd.is_empty() && self.radio.is_empty()
+    }
+}
+
+#[derive(Debug)]
+pub struct FritzBox {
+    http: reqwest::Client,
+}
+
+impl FritzBox {
+    pub fn new() -> eyre::Result<Self> {
+        Ok(Self {
+            http: reqwest::Client::builder()
+                .user_agent(format!("{APP_ID}/{VERSION} ({PROJECT_URL})"))
+                .connect_timeout(Duration::from_secs(5))
+                .timeout(Duration::from_secs(15))
+                .build()?,
+        })
+    }
+
+    pub async fn channels(&self, address: &str) -> eyre::Result<FritzChannels> {
+        let base_url = base_url(address)?;
+        let mut channels = FritzChannels::default();
+
+        for list in ChannelList::ALL {
+            *channels.get_mut(list) = self.channel_list(&base_url, list).await?;
+        }
+
+        Ok(channels)
+    }
+
+    async fn channel_list(
+        &self,
+        base_url: &Url,
+        list: ChannelList,
+    ) -> eyre::Result<Vec<FritzChannel>> {
+        let url = base_url.join(list.path())?;
+
+        let response = self.http.get(url.clone()).send().await.wrap_err_with(|| {
+            // translators: `{}` is replaced by the address, e.g. `fritz.box`
+            gettext("Could not connect to the FRITZ!Box at “{}”")
+                .replace("{}", base_url.authority())
+        })?;
+
+        // a missing list (e.g. no radio channels) is not an error
+        if response.status() == StatusCode::NOT_FOUND {
+            return Ok(Vec::new());
+        }
+
+        let bytes = response.error_for_status()?.bytes().await?;
+        let text = m3u::decode(&bytes);
+
+        if !m3u::is_playlist(&text) {
+            eyre::bail!(
+                // translators: `{}` is replaced by a URL
+                gettext("“{}” is not a channel list").replace("{}", url.as_str())
+            );
+        }
+
+        Ok(m3u::parse(&text))
+    }
+
+    pub async fn logo_index(&self) -> LogoIndex {
+        logos::load_index(self.http.clone()).await
+    }
+
+    pub async fn logo(&self, file_name: String) -> eyre::Result<Vec<u8>> {
+        logos::load_logo(self.http.clone(), file_name).await
+    }
+}
+
+/// Builds the base URL from a user-provided address such as `fritz.box`,
+/// `192.168.178.1`, `192.168.178.1:8080` or `http://fritz.box/`.
+pub fn base_url(address: &str) -> eyre::Result<Url> {
+    let address = address.trim();
+    let address = address
+        .strip_prefix("http://")
+        .or_else(|| address.strip_prefix("https://"))
+        .unwrap_or(address);
+    let host = address.split('/').next().unwrap_or_default();
+    let host = if host.is_empty() {
+        DEFAULT_ADDRESS
+    } else {
+        host
+    };
+
+    Url::parse(&format!("http://{host}/"))
+        .ok()
+        .filter(|url| url.host_str().is_some_and(|host| !host.is_empty()))
+        .ok_or_else(|| {
+            eyre::eyre!(
+                // translators: `{}` is replaced by the address entered by the user
+                gettext("“{}” is not a valid address").replace("{}", address)
+            )
+        })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn builds_base_url() {
+        for (address, expected) in [
+            ("fritz.box", "http://fritz.box/"),
+            ("  192.168.178.1 ", "http://192.168.178.1/"),
+            ("192.168.178.1:8080", "http://192.168.178.1:8080/"),
+            ("http://fritz.box/", "http://fritz.box/"),
+            ("https://fritz.box/dvb/m3u/tvhd.m3u", "http://fritz.box/"),
+            ("[fd00::1]", "http://[fd00::1]/"),
+            ("", "http://fritz.box/"),
+        ] {
+            assert_eq!(base_url(address).unwrap().as_str(), expected, "{address}");
+        }
+
+        assert_eq!(
+            base_url("fritz.box")
+                .unwrap()
+                .join(ChannelList::Hd.path())
+                .unwrap()
+                .as_str(),
+            "http://fritz.box/dvb/m3u/tvhd.m3u"
+        );
+    }
+
+    #[test]
+    fn rejects_invalid_addresses() {
+        assert!(base_url("fritz box").is_err());
+        assert!(base_url("192.168.178.1:99999").is_err());
+    }
+}

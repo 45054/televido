@@ -1,0 +1,99 @@
+# SPDX-FileCopyrightText: Televido contributors
+# SPDX-License-Identifier: CC0-1.0
+#
+# Git-based package for local builds on Arch Linux, derived from the AUR
+# package "televido" by zzzardoz <zzzardoz at mail dot de> and
+# Sebastian Wiesner <sebastian@swsnr.de>.
+#
+# Build and install the default branch of the GitHub repository:
+#   makepkg -si
+#
+# Build another branch or the local checkout (committed changes only):
+#   TELEVIDO_BRANCH=my-branch makepkg -si
+#   TELEVIDO_SOURCE="file://$(git rev-parse --show-toplevel)" \
+#     TELEVIDO_BRANCH="$(git branch --show-current)" makepkg -si
+# When switching TELEVIDO_SOURCE, delete the cached clone (./televido) first.
+
+pkgname=televido-git
+_pkgname=televido
+pkgver=0.5.0.r69.g4dc7b8e
+pkgrel=1
+pkgdesc="Access German-language public broadcasting live streams and archives on the Linux Desktop"
+arch=(x86_64 aarch64)
+url="https://github.com/45054/televido"
+license=('GPL-3.0-or-later')
+depends=(
+    gcc-libs
+    glib2
+    glibc
+    gstreamer
+    gtk4
+    libadwaita
+    libclapper-gtk
+    mpv
+    openssl
+)
+makedepends=(
+    blueprint-compiler
+    git
+    meson
+    rust
+)
+checkdepends=(
+    appstream
+    desktop-file-utils
+)
+optdepends=(
+    'totem: external video player'
+    'celluloid: external video player'
+    'clapper: external video player'
+    'daikhan-git: external video player'
+    'parabolic: video download'
+)
+provides=("${_pkgname}")
+conflicts=("${_pkgname}")
+
+_source="${TELEVIDO_SOURCE:-${url}.git}"
+_branch="${TELEVIDO_BRANCH:-main}"
+source=("${_pkgname}::git+${_source}#branch=${_branch}")
+sha256sums=('SKIP')
+
+pkgver() {
+    cd "${_pkgname}"
+    printf '%s.r%s.g%s' \
+        "$(sed -n 's/^version = "\(.*\)"$/\1/p' Cargo.toml | head -n1)" \
+        "$(git rev-list --count HEAD)" \
+        "$(git rev-parse --short=7 HEAD)"
+}
+
+prepare() {
+    cd "${_pkgname}"
+    export RUSTUP_TOOLCHAIN=stable
+    cargo fetch --locked --target "$(rustc -vV | sed -n 's/host: //p')"
+}
+
+build() {
+    export RUSTUP_TOOLCHAIN=stable
+    export CARGO_NET_OFFLINE=true
+    # Use LTO
+    export CARGO_PROFILE_RELEASE_LTO=true CARGO_PROFILE_RELEASE_CODEGEN_UNITS=1
+    # Keep debug symbols for the -debug package
+    export CARGO_PROFILE_RELEASE_DEBUG=2
+
+    arch-meson "${_pkgname}" build
+    meson compile -C build
+}
+
+check() {
+    export RUSTUP_TOOLCHAIN=stable
+    export CARGO_NET_OFFLINE=true
+    export CARGO_PROFILE_RELEASE_LTO=true CARGO_PROFILE_RELEASE_CODEGEN_UNITS=1
+    export CARGO_PROFILE_RELEASE_DEBUG=2
+
+    meson test -C build --print-errorlogs
+    cargo test --frozen --release --manifest-path "${_pkgname}/Cargo.toml"
+}
+
+package() {
+    meson install -C build --destdir "${pkgdir}" --no-rebuild
+}

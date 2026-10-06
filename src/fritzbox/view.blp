@@ -1,0 +1,127 @@
+// SPDX-FileCopyrightText: David Cabot <d-k-bo@mailbox.org>
+// SPDX-License-Identifier: GPL-3.0-or-later
+using Gtk 4.0;
+using Adw 1;
+
+template $TvFritzView: Adw.Bin {
+  Gtk.Stack stack {
+    Gtk.StackPage {
+      name: "spinner";
+
+      child: Gtk.Spinner spinner {
+        halign: center;
+        valign: center;
+        spinning: true;
+      };
+    }
+
+    Gtk.StackPage {
+      name: "channels";
+
+      child: Gtk.ScrolledWindow {
+        hscrollbar-policy: never;
+
+        Adw.Clamp {
+          Gtk.Box {
+            orientation: vertical;
+            spacing: 24;
+            margin-top: 12;
+            margin-bottom: 12;
+            margin-start: 12;
+            margin-end: 12;
+
+            Adw.PreferencesGroup hd_group {
+              title: _("HD");
+
+              Gtk.ListBox hd_list {
+                selection-mode: none;
+
+                styles [
+                  "boxed-list"
+                ]
+              }
+            }
+
+            Adw.PreferencesGroup sd_group {
+              title: _("SD");
+
+              Gtk.ListBox sd_list {
+                selection-mode: none;
+
+                styles [
+                  "boxed-list"
+                ]
+              }
+            }
+
+            Adw.PreferencesGroup radio_group {
+              title: _("Radio");
+
+              Gtk.ListBox radio_list {
+                selection-mode: none;
+
+                styles [
+                  "boxed-list"
+                ]
+              }
+            }
+          }
+        }
+      };
+    }
+
+    Gtk.StackPage {
+      name: "empty";
+
+      child: Adw.StatusPage {
+        icon-name: "modem-symbolic";
+        title: _("No Channels Found");
+        description: _("Run a channel scan in the DVB-C settings of your FRITZ!Box, then reload.");
+
+        child: Gtk.Button {
+          label: _("Reload");
+          halign: center;
+          action-name: "window.reload";
+
+          styles [
+            "pill"
+          ]
+        };
+      };
+    }
+
+    Gtk.StackPage {
+      name: "error";
+
+      child: Adw.StatusPage error_page {
+        icon-name: "error-symbolic";
+        title: _("Could Not Load Channels");
+
+        child: Gtk.Box {
+          orientation: horizontal;
+          halign: center;
+          spacing: 12;
+
+          Gtk.Button {
+            label: _("Preferences");
+            action-name: "app.preferences";
+
+            styles [
+              "pill"
+            ]
+          }
+
+          Gtk.Button {
+            label: _("Retry");
+            action-name: "window.reload";
+
+            styles [
+              "pill",
+              "suggested-action"
+            ]
+          }
+        };
+      };
+    }
+  }
+}
