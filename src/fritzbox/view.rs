@@ -44,6 +44,8 @@ mod imp {
         radio_list: TemplateChild<gtk::ListBox>,
 
         logo_index: RefCell<Option<Rc<LogoIndex>>>,
+        /// The channel lists of the last reload.
+        lists: RefCell<Vec<ChannelList>>,
         /// Incremented on every reload to discard outdated results.
         generation: Cell<u64>,
     }
@@ -61,7 +63,9 @@ mod imp {
 
             let fritzbox = TvApplication::get().fritzbox();
             let address = settings.fritzbox_address();
-            let result = tokio(async move { fritzbox.channels(&address).await }).await;
+            let lists = ChannelList::selected(settings.fritztv_show_radio());
+            self.lists.replace(lists.clone());
+            let result = tokio(async move { fritzbox.channels(&address, &lists).await }).await;
 
             if self.generation.get() != generation {
                 return;
@@ -195,6 +199,16 @@ mod imp {
                 #[weak(rename_to = slf)]
                 self,
                 move |_| spawn(async move { slf.reload().await })
+            ));
+            settings.connect_fritztv_show_radio_changed(glib::clone!(
+                #[weak(rename_to = slf)]
+                self,
+                move |settings| {
+                    // the preferences dialog rewrites the key when it is opened
+                    if ChannelList::selected(settings.fritztv_show_radio()) != *slf.lists.borrow() {
+                        spawn(async move { slf.reload().await })
+                    }
+                }
             ));
         }
     }

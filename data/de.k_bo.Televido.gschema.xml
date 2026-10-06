@@ -56,6 +56,9 @@
 		<key name="fritzbox-address" type="s">
 			<default>"fritz.box"</default>
 		</key>
+		<key name="fritztv-show-radio" type="b">
+			<default>true</default>
+		</key>
 		<key name="mpv-arguments" type="as">
 			<default>[
 				"--force-window=immediate",

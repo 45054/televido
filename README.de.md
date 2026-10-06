@@ -27,7 +27,7 @@ Televido bietet einen integrierten Videoplayer zum Abspielen der Inhalte. Darüb
 
 ## FritzTV (FRITZ!Box Cable DVB-C)
 
-Televido kann die DVB-C-Sender einer FRITZ!Box Cable (z. B. 6490, 6591, 6660, 6690) im Heimnetz abspielen. Die Funktion wird in den Einstellungen unter *FritzTV* aktiviert; anschließend listet der neue Reiter *FritzTV* die HD-, SD- und Radiosender der FRITZ!Box auf.
+Televido kann die DVB-C-Sender einer FRITZ!Box Cable (z. B. 6490, 6591, 6660, 6690) im Heimnetz abspielen. Die Funktion wird in den Einstellungen unter *FritzTV* aktiviert; anschließend listet der neue Reiter *FritzTV* die HD-, SD- und Radiosender der FRITZ!Box auf. Die Radiosender lassen sich in den Einstellungen ausblenden.
 
 - **Voraussetzungen:** [mpv](https://mpv.io/) muss installiert sein (FritzTV nutzt nicht den integrierten Player) und die FRITZ!Box muss einen Sendersuchlauf abgeschlossen haben (DVB-C-Einstellungen in der Benutzeroberfläche der FRITZ!Box). Verschlüsselte Sender können nicht abgespielt werden.
 - **Adresse:** Standardmäßig wird `fritz.box` verwendet. Falls das im eigenen Netz nicht aufgelöst wird, die IP-Adresse der FRITZ!Box eintragen (z. B. `192.168.178.1`).

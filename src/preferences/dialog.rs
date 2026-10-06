@@ -39,6 +39,8 @@ mod imp {
 
         #[property(get, set)]
         fritztv_enabled: Cell<bool>,
+        #[property(get, set)]
+        fritztv_show_radio: Cell<bool>,
         #[property(get)]
         mpv_missing: Cell<bool>,
         #[property(get)]
@@ -178,6 +180,9 @@ mod imp {
 
             self.settings
                 .bind_fritztv_enabled(&*self.obj(), "fritztv-enabled")
+                .build();
+            self.settings
+                .bind_fritztv_show_radio(&*self.obj(), "fritztv-show-radio")
                 .build();
             self.mpv_missing.set(!mpv::is_installed());
             self.fritzbox_address_row
