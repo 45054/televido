@@ -31,7 +31,14 @@ pub enum ChannelList {
 }
 
 impl ChannelList {
-    pub const ALL: [ChannelList; 3] = [ChannelList::Hd, ChannelList::Sd, ChannelList::Radio];
+    /// Returns the lists to load, in display order.
+    pub fn selected(show_radio: bool) -> Vec<ChannelList> {
+        let mut lists = vec![ChannelList::Hd, ChannelList::Sd];
+        if show_radio {
+            lists.push(ChannelList::Radio);
+        }
+        lists
+    }
 
     fn path(self) -> &'static str {
         match self {
@@ -85,11 +92,15 @@ impl FritzBox {
         })
     }
 
-    pub async fn channels(&self, address: &str) -> eyre::Result<FritzChannels> {
+    pub async fn channels(
+        &self,
+        address: &str,
+        lists: &[ChannelList],
+    ) -> eyre::Result<FritzChannels> {
         let base_url = base_url(address)?;
         let mut channels = FritzChannels::default();
 
-        for list in ChannelList::ALL {
+        for &list in lists {
             *channels.get_mut(list) = self.channel_list(&base_url, list).await?;
         }
 
@@ -187,6 +198,18 @@ mod tests {
                 .unwrap()
                 .as_str(),
             "http://fritz.box/dvb/m3u/tvhd.m3u"
+        );
+    }
+
+    #[test]
+    fn selects_channel_lists() {
+        assert_eq!(
+            ChannelList::selected(true),
+            [ChannelList::Hd, ChannelList::Sd, ChannelList::Radio]
+        );
+        assert_eq!(
+            ChannelList::selected(false),
+            [ChannelList::Hd, ChannelList::Sd]
         );
     }
 

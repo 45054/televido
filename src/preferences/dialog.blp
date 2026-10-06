@@ -85,6 +85,12 @@ template $TvPreferencesDialog: Adw.PreferencesDialog {
         apply => $apply_fritzbox_address() swapped;
       }
 
+      Adw.SwitchRow {
+        title: _("Show radio channels");
+        active: bind template.fritztv-show-radio bidirectional;
+        sensitive: bind template.fritztv-enabled;
+      }
+
       Adw.ActionRow {
         title: _("mpv Arguments");
         subtitle: bind template.mpv-arguments-summary;
