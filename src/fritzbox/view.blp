@@ -30,6 +30,18 @@ template $TvFritzView: Adw.Bin {
             margin-start: 12;
             margin-end: 12;
 
+            Adw.PreferencesGroup tv_group {
+              title: _("TV");
+
+              Gtk.ListBox tv_list {
+                selection-mode: none;
+
+                styles [
+                  "boxed-list"
+                ]
+              }
+            }
+
             Adw.PreferencesGroup hd_group {
               title: _("HD");
 

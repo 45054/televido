@@ -40,6 +40,8 @@ mod imp {
         #[property(get, set)]
         fritztv_enabled: Cell<bool>,
         #[property(get, set)]
+        fritztv_separate_hd_sd: Cell<bool>,
+        #[property(get, set)]
         fritztv_show_radio: Cell<bool>,
         #[property(get)]
         mpv_missing: Cell<bool>,
@@ -180,6 +182,9 @@ mod imp {
 
             self.settings
                 .bind_fritztv_enabled(&*self.obj(), "fritztv-enabled")
+                .build();
+            self.settings
+                .bind_fritztv_separate_hd_sd(&*self.obj(), "fritztv-separate-hd-sd")
                 .build();
             self.settings
                 .bind_fritztv_show_radio(&*self.obj(), "fritztv-show-radio")
