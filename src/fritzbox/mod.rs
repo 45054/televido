@@ -11,6 +11,9 @@
 
 mod logos;
 mod m3u;
+// TODO: load the logos from tv.avm.de
+#[allow(dead_code)]
+mod tvapp;
 mod view;
 
 use std::time::Duration;
