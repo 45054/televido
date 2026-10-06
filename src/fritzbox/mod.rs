@@ -11,8 +11,6 @@
 
 mod logos;
 mod m3u;
-// TODO: load the logos from tv.avm.de
-#[allow(dead_code)]
 mod tvapp;
 mod view;
 
@@ -24,7 +22,11 @@ use reqwest::{StatusCode, Url};
 
 use crate::config::{APP_ID, PROJECT_URL, VERSION};
 
-pub use self::{logos::LogoIndex, m3u::FritzChannel, view::TvFritzView};
+pub use self::{
+    logos::{LogoIndex, LogoSources},
+    m3u::FritzChannel,
+    view::TvFritzView,
+};
 
 pub const DEFAULT_ADDRESS: &str = "fritz.box";
 
@@ -169,8 +171,8 @@ impl FritzBox {
         logos::load_index(self.http.clone()).await
     }
 
-    pub async fn logo(&self, file_name: String) -> eyre::Result<Vec<u8>> {
-        logos::load_logo(self.http.clone(), file_name).await
+    pub async fn logo(&self, sources: LogoSources) -> eyre::Result<Vec<u8>> {
+        logos::load_logo(self.http.clone(), sources).await
     }
 }
 

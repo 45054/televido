@@ -33,7 +33,7 @@ Televido can play the DVB-C channels of a FRITZ!Box Cable (e.g. 6490, 6591, 6660
 - **Address:** `fritz.box` is used by default. If that doesn't resolve in your network, enter the IP address of your FRITZ!Box (e.g. `192.168.178.1`).
 - **mpv arguments:** the arguments passed to mpv can be edited in the preferences. The defaults are tuned for the FRITZ!Box (`--rtsp-transport=udp` is required, the FRITZ!Box doesn't support RTSP over TCP).
 - **One stream per device:** the FRITZ!Box only delivers one channel per device, so starting a channel stops the previous one.
-- **Channel logos** are downloaded from AVM (`https://download.avm.de/tv/logos/`) and cached.
+- **Channel logos** are downloaded from AVM and cached: from `https://tv.avm.de/tvapp/logos/` like in the FRITZ!Box web interface, otherwise from `https://download.avm.de/tv/logos/`.
 - **Stuttering:** the streams arrive via UDP. If the picture stutters, the kernel's maximum socket receive buffer may be too small for the default `buffer_size` (4 MiB):
   ```
   echo 'net.core.rmem_max=4194304' | sudo tee /etc/sysctl.d/90-televido-rtp.conf && sudo sysctl --system

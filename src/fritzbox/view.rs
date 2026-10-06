@@ -16,7 +16,7 @@ use crate::{
     utils::{show_error, spawn, tokio},
 };
 
-use super::{ChannelList, FritzChannel, FritzChannels, LogoIndex};
+use super::{ChannelList, FritzChannel, FritzChannels, LogoIndex, LogoSources};
 
 const LOGO_SIZE: i32 = 48;
 
@@ -93,8 +93,11 @@ mod imp {
             }
         }
 
-        /// Fills the channel lists and returns the logo placeholders by channel name.
-        fn show_channels(&self, channels: &FritzChannels) -> Vec<(String, gtk::Image)> {
+        /// Fills the channel lists and returns the logo placeholders by channel.
+        fn show_channels(
+            &self,
+            channels: &FritzChannels,
+        ) -> Vec<(ChannelList, String, gtk::Image)> {
             let mut logos = Vec::new();
 
             for (list, group, list_box) in [
@@ -115,14 +118,14 @@ mod imp {
                 for channel in channels {
                     let (row, logo) = channel_row(channel, list);
                     list_box.append(&row);
-                    logos.push((channel.name.clone(), logo));
+                    logos.push((list, channel.name.clone(), logo));
                 }
             }
 
             logos
         }
 
-        async fn load_logos(&self, logos: Vec<(String, gtk::Image)>) {
+        async fn load_logos(&self, logos: Vec<(ChannelList, String, gtk::Image)>) {
             let fritzbox = TvApplication::get().fritzbox();
 
             let cached_index = self.logo_index.borrow().clone();
@@ -144,14 +147,15 @@ mod imp {
                 }
             };
 
-            for (name, image) in logos {
-                let Some(file_name) = index.lookup(&name).map(ToOwned::to_owned) else {
+            for (list, name, image) in logos {
+                let sources = LogoSources::new(&name, list, &index);
+                if sources.is_empty() {
                     continue;
-                };
+                }
                 let fritzbox = fritzbox.clone();
 
                 spawn(async move {
-                    let data = match tokio(async move { fritzbox.logo(file_name).await }).await {
+                    let data = match tokio(async move { fritzbox.logo(sources).await }).await {
                         Ok(data) => data,
                         Err(e) => {
                             tracing::debug!("failed to load logo for “{name}”: {e:?}");

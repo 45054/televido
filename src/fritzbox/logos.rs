@@ -1,17 +1,28 @@
 // SPDX-FileCopyrightText: David Cabot <d-k-bo@mailbox.org>
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-//! Channel logos provided by AVM at <https://download.avm.de/tv/logos/>.
+//! Channel logos provided by AVM.
 //!
-//! The directory listing is matched against the channel names from the
-//! FRITZ!Box playlists (same approach as
+//! Logos are first looked up at <https://tv.avm.de/tvapp/logos/>, which is
+//! used by the FRITZ!Box web interface (see [`tvapp`]). Otherwise, the
+//! directory listing at <https://download.avm.de/tv/logos/> is matched
+//! against the channel names from the FRITZ!Box playlists (same approach as
 //! <https://github.com/ElectronicResearch/fritzmux>). The listing and the
 //! downloaded logos are cached in the user's cache directory.
 
-use std::{collections::HashMap, path::PathBuf, sync::OnceLock};
+use std::{
+    collections::{BTreeSet, HashMap},
+    path::PathBuf,
+    sync::{Mutex, OnceLock},
+};
 
-use eyre::{OptionExt, WrapErr};
+use reqwest::{StatusCode, Url};
 use tokio::sync::Semaphore;
+
+use super::{
+    tvapp::{self, TVAPP_LOGOS_URL},
+    ChannelList,
+};
 
 pub const AVM_LOGOS_URL: &str = "https://download.avm.de/tv/logos/";
 
@@ -65,6 +76,60 @@ impl LogoIndex {
 
         Some(file_name)
     }
+}
+
+/// Where to look for the logo of a channel.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct LogoSources {
+    /// Paths relative to [`TVAPP_LOGOS_URL`], most likely first.
+    tvapp_paths: Vec<String>,
+    /// File name from the directory listing at [`AVM_LOGOS_URL`].
+    avm_file_name: Option<String>,
+}
+
+impl LogoSources {
+    pub fn new(channel_name: &str, list: ChannelList, index: &LogoIndex) -> Self {
+        Self {
+            tvapp_paths: tvapp::logo_paths(channel_name, list),
+            avm_file_name: index.lookup(channel_name).map(ToOwned::to_owned),
+        }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.tvapp_paths.is_empty() && self.avm_file_name.is_none()
+    }
+
+    /// Returns the candidates grouped by source, preferred source first.
+    fn files(&self) -> eyre::Result<[Vec<LogoFile>; 2]> {
+        let tvapp = self
+            .tvapp_paths
+            .iter()
+            .map(|path| {
+                Ok(LogoFile {
+                    url: Url::parse(TVAPP_LOGOS_URL)?.join(path)?,
+                    cache_file: cache_dir().join("tvapp").join(path),
+                })
+            })
+            .collect::<eyre::Result<_>>()?;
+        let avm = self
+            .avm_file_name
+            .iter()
+            .map(|file_name| {
+                Ok(LogoFile {
+                    url: Url::parse(AVM_LOGOS_URL)?.join(file_name)?,
+                    cache_file: cache_dir().join(file_name),
+                })
+            })
+            .collect::<eyre::Result<_>>()?;
+
+        Ok([tvapp, avm])
+    }
+}
+
+#[derive(Debug)]
+struct LogoFile {
+    url: Url,
+    cache_file: PathBuf,
 }
 
 /// Returns the normalized name with and without trailing quality/region
@@ -145,13 +210,39 @@ async fn fetch_listing(http: &reqwest::Client) -> eyre::Result<String> {
         .await?)
 }
 
-/// Returns the PNG data of the logo `file_name`, downloading it if necessary.
-pub async fn load_logo(http: reqwest::Client, file_name: String) -> eyre::Result<Vec<u8>> {
-    static DOWNLOADS: OnceLock<Semaphore> = OnceLock::new();
+/// Returns the PNG data of the first logo found in `sources`.
+///
+/// Within each source, a cached logo is preferred over downloading a more
+/// likely candidate that wasn't found before.
+pub async fn load_logo(http: reqwest::Client, sources: LogoSources) -> eyre::Result<Vec<u8>> {
+    for files in sources.files()? {
+        for file in &files {
+            if let Ok(data) = tokio::fs::read(&file.cache_file).await {
+                return Ok(data);
+            }
+        }
+        for file in &files {
+            match download_logo(&http, file).await {
+                Ok(data) => return Ok(data),
+                Err(e) => tracing::debug!("failed to load logo {}: {e:?}", file.url),
+            }
+        }
+    }
 
-    let cache_file = cache_dir().join(&file_name);
-    if let Ok(data) = tokio::fs::read(&cache_file).await {
-        return Ok(data);
+    eyre::bail!("no logo found")
+}
+
+/// Downloads and caches the logo `file`.
+async fn download_logo(http: &reqwest::Client, file: &LogoFile) -> eyre::Result<Vec<u8>> {
+    static DOWNLOADS: OnceLock<Semaphore> = OnceLock::new();
+    /// URLs that didn't provide a logo, to avoid requesting them again on reload.
+    static MISSING: Mutex<BTreeSet<String>> = Mutex::new(BTreeSet::new());
+
+    let is_missing = || MISSING.lock().unwrap().contains(file.url.as_str());
+    let set_missing = || MISSING.lock().unwrap().insert(file.url.to_string());
+
+    if is_missing() {
+        eyre::bail!("not found before");
     }
 
     let _permit = DOWNLOADS
@@ -159,22 +250,21 @@ pub async fn load_logo(http: reqwest::Client, file_name: String) -> eyre::Result
         .acquire()
         .await?;
 
-    let url = reqwest::Url::parse(AVM_LOGOS_URL)?.join(&file_name)?;
-    let data = http
-        .get(url)
-        .send()
-        .await?
-        .error_for_status()?
-        .bytes()
-        .await?;
+    let response = http.get(file.url.clone()).send().await?;
+    if response.status() == StatusCode::NOT_FOUND {
+        set_missing();
+        eyre::bail!("not found");
+    }
+    let data = response.error_for_status()?.bytes().await?;
 
-    data.starts_with(PNG_SIGNATURE)
-        .then_some(())
-        .ok_or_eyre("logo is not a PNG image")?;
+    if !data.starts_with(PNG_SIGNATURE) {
+        set_missing();
+        eyre::bail!("logo is not a PNG image");
+    }
 
-    write_cache(&cache_file, &data)
-        .await
-        .wrap_err("failed to cache logo")?;
+    if let Err(e) = write_cache(&file.cache_file, &data).await {
+        tracing::warn!("failed to cache logo {}: {e:?}", file.url);
+    }
 
     Ok(data.into())
 }
@@ -237,6 +327,34 @@ mod tests {
         assert_eq!(index.lookup("ProSieben"), Some("prosieben.png"));
         assert_eq!(index.lookup("Unknown Channel"), None);
         assert_eq!(index.lookup("!!!"), None);
+    }
+
+    #[test]
+    fn prefers_tvapp_logos() {
+        let index = LogoIndex::from_listing(LISTING);
+        let sources = LogoSources::new("ZDF HD", ChannelList::Tv, &index);
+
+        assert_eq!(
+            sources,
+            LogoSources {
+                tvapp_paths: vec!["hd/zdf_hd.png".to_owned(), "zdf_hd.png".to_owned()],
+                avm_file_name: Some("zdf.png".to_owned()),
+            }
+        );
+
+        let [tvapp, avm] = sources.files().unwrap();
+        assert_eq!(
+            tvapp[0].url.as_str(),
+            "https://tv.avm.de/tvapp/logos/hd/zdf_hd.png"
+        );
+        assert_eq!(tvapp[0].cache_file, cache_dir().join("tvapp/hd/zdf_hd.png"));
+        assert_eq!(
+            avm[0].url.as_str(),
+            "https://download.avm.de/tv/logos/zdf.png"
+        );
+        assert_eq!(avm[0].cache_file, cache_dir().join("zdf.png"));
+
+        assert!(LogoSources::new("!!!", ChannelList::Tv, &index).is_empty());
     }
 
     #[test]

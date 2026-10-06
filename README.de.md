@@ -33,7 +33,7 @@ Televido kann die DVB-C-Sender einer FRITZ!Box Cable (z. B. 6490, 6591, 6660, 66
 - **Adresse:** Standardmäßig wird `fritz.box` verwendet. Falls das im eigenen Netz nicht aufgelöst wird, die IP-Adresse der FRITZ!Box eintragen (z. B. `192.168.178.1`).
 - **mpv-Argumente:** Die an mpv übergebenen Argumente lassen sich in den Einstellungen bearbeiten. Die Voreinstellungen sind auf die FRITZ!Box abgestimmt (`--rtsp-transport=udp` ist notwendig, die FRITZ!Box unterstützt kein RTSP über TCP).
 - **Ein Stream pro Gerät:** Die FRITZ!Box liefert nur einen Sender pro Gerät, deshalb beendet der Start eines Senders den vorherigen.
-- **Senderlogos** werden von AVM (`https://download.avm.de/tv/logos/`) heruntergeladen und zwischengespeichert.
+- **Senderlogos** werden von AVM heruntergeladen und zwischengespeichert: von `https://tv.avm.de/tvapp/logos/` wie in der Benutzeroberfläche der FRITZ!Box, ersatzweise von `https://download.avm.de/tv/logos/`.
 - **Ruckeln:** Die Streams kommen per UDP. Ruckelt das Bild, ist eventuell der maximale Empfangspuffer des Kernels zu klein für die voreingestellte `buffer_size` (4 MiB):
   ```
   echo 'net.core.rmem_max=4194304' | sudo tee /etc/sysctl.d/90-televido-rtp.conf && sudo sysctl --system
