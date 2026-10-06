@@ -40,7 +40,25 @@ Televido can play the DVB-C channels of a FRITZ!Box Cable (e.g. 6490, 6591, 6660
   ```
   Firewalls must allow incoming UDP traffic from the FRITZ!Box.
 
-FritzTV starts mpv as a regular process and is therefore intended for native installations (e.g. distribution packages). Inside the Flatpak sandbox, mpv is not available.
+FritzTV starts mpv as a regular process and is therefore intended for native installations (see [Building on Arch Linux](#building-on-arch-linux)). Inside the Flatpak sandbox, mpv is not available.
+
+## Building on Arch Linux
+
+[`build-aux/arch/PKGBUILD`](build-aux/arch/PKGBUILD) builds a `televido-git` package from this repository, including FritzTV and its mpv dependency:
+
+```
+cd build-aux/arch
+makepkg -si
+```
+
+By default, the `main` branch is fetched from GitHub. To build another branch or the local checkout (committed changes only):
+
+```
+TELEVIDO_BRANCH=my-branch makepkg -si
+TELEVIDO_SOURCE="file://$(git rev-parse --show-toplevel)" TELEVIDO_BRANCH="$(git branch --show-current)" makepkg -si
+```
+
+When switching `TELEVIDO_SOURCE`, delete the cached clone `build-aux/arch/televido/` first. Note that makepkg updates the `pkgver` line in the PKGBUILD on every build.
 
 ## Channel logos
 
