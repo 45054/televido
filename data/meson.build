@@ -54,7 +54,12 @@ install_data(
   install_dir: get_option('datadir') / 'glib-2.0' / 'schemas',
 )
 
-gnome.compile_schemas(depend_files: meson.current_source_dir())
+gnome.compile_schemas(
+  depend_files: files(
+    BASE_APP_ID + '.gschema.xml',
+    BASE_APP_ID + '.Player' + '.gschema.xml',
+  ),
+)
 
 compile_schemas = find_program('glib-compile-schemas', required: false, disabler: true)
 if compile_schemas.found()

@@ -66,6 +66,21 @@ pkgver() {
         "$(git rev-parse --short=7 HEAD)"
 }
 
+# Must be identical in build() and check(), otherwise cargo rebuilds everything.
+_cargo_env() {
+    export RUSTUP_TOOLCHAIN=stable
+    export CARGO_NET_OFFLINE=true
+    # Use LTO
+    export CARGO_PROFILE_RELEASE_LTO=true CARGO_PROFILE_RELEASE_CODEGEN_UNITS=1
+    # Keep debug symbols for the -debug package
+    export CARGO_PROFILE_RELEASE_DEBUG=2
+    # Don't embed $srcdir in the binary (same mapping as makepkg's debug option)
+    local remap="--remap-path-prefix=${srcdir}=/usr/src/debug/${pkgbase}"
+    if [[ " ${RUSTFLAGS:-} " != *" ${remap} "* ]]; then
+        export RUSTFLAGS="${RUSTFLAGS:-} ${remap}"
+    fi
+}
+
 prepare() {
     cd "${_pkgname}"
     export RUSTUP_TOOLCHAIN=stable
@@ -73,23 +88,17 @@ prepare() {
 }
 
 build() {
-    export RUSTUP_TOOLCHAIN=stable
-    export CARGO_NET_OFFLINE=true
-    # Use LTO
-    export CARGO_PROFILE_RELEASE_LTO=true CARGO_PROFILE_RELEASE_CODEGEN_UNITS=1
-    # Keep debug symbols for the -debug package
-    export CARGO_PROFILE_RELEASE_DEBUG=2
-
+    _cargo_env
+    # makepkg keeps $srcdir between runs (without -C) and meson can't set up
+    # an existing build directory again. Cargo's target directory lives in
+    # the source tree, so the Rust build stays incremental.
+    rm -rf build
     arch-meson "${_pkgname}" build
     meson compile -C build
 }
 
 check() {
-    export RUSTUP_TOOLCHAIN=stable
-    export CARGO_NET_OFFLINE=true
-    export CARGO_PROFILE_RELEASE_LTO=true CARGO_PROFILE_RELEASE_CODEGEN_UNITS=1
-    export CARGO_PROFILE_RELEASE_DEBUG=2
-
+    _cargo_env
     meson test -C build --print-errorlogs
     cargo test --frozen --release --manifest-path "${_pkgname}/Cargo.toml"
 }
