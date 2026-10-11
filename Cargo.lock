@@ -2436,7 +2436,6 @@ dependencies = [
  "indexmap",
  "libadwaita",
  "mediathekviewweb",
- "once_cell",
  "phf 0.11.3",
  "reqwest",
  "serde",
