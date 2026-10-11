@@ -51,7 +51,7 @@ Televido can play the DVB-C channels of a FRITZ!Box Cable (e.g. 6490, 6591, 6660
   ```
   Firewalls must allow incoming UDP traffic from the FRITZ!Box.
 
-FritzTV starts mpv as a regular process and is therefore intended for native installations (see [Building on Arch Linux](#building-on-arch-linux)). Inside the Flatpak sandbox, mpv is not available.
+FritzTV starts mpv as a regular process and is therefore intended for native installations (see [Building on Arch Linux](#building-on-arch-linux)). The development Flatpak ([`build-aux/de.k_bo.Televido.Devel.json`](build-aux/de.k_bo.Televido.Devel.json)) bundles mpv as well.
 
 ## Building on Arch Linux
 

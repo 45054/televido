@@ -32,13 +32,13 @@
 
 Die präsentierten Inhalte werden direkt von den jeweiligen Sendern angeboten, dieses Programm erleichtert dabei nur das Auffinden und Abrufen der Sendungen.
 
-Televido bietet einen integrierten Videoplayer zum Abspielen der Inhalte. Darüber hinaus unterstützt Televido für Videowiedergabe und -download externe Programme, die auf dem System installiert sind. Derzeit unterstütze Player: [GNOME Videos (Totem)](https://flathub.org/apps/org.gnome.Totem), [Celluloid](https://flathub.org/apps/io.github.celluloid_player.Celluloid), [Clapper](https://flathub.org/apps/com.github.rafostar.Clapper), [Daikhan](https://flathub.org/apps/io.gitlab.daikhan.stable). Derzeit unterstütze Videodownloader: [Parabolic](https://flathub.org/apps/org.nickvision.tubeconverter).
+Televido spielt Videos mit [mpv](https://mpv.io/) ab, das installiert sein muss. Darüber hinaus unterstützt Televido für Videowiedergabe und -download externe Programme, die auf dem System installiert sind. Derzeit unterstützte Player: [GNOME Videos (Totem)](https://flathub.org/apps/org.gnome.Totem), [Celluloid](https://flathub.org/apps/io.github.celluloid_player.Celluloid), [Clapper](https://flathub.org/apps/com.github.rafostar.Clapper), [Daikhan](https://flathub.org/apps/io.gitlab.daikhan.stable). Derzeit unterstützte Videodownloader: [Parabolic](https://flathub.org/apps/org.nickvision.tubeconverter).
 
 ## FritzTV (FRITZ!Box Cable DVB-C)
 
 Televido kann die DVB-C-Sender einer FRITZ!Box Cable (z. B. 6490, 6591, 6660, 6690) im Heimnetz abspielen. Die Funktion wird in den Einstellungen unter *FritzTV* aktiviert; anschließend listet der neue Reiter *FritzTV* die TV- und Radiosender der FRITZ!Box auf. Standardmäßig erscheint jeder TV-Sender einmal in der besten verfügbaren Qualität (`tv.m3u`); wahlweise lassen sich HD- und SD-Sender getrennt anzeigen. Die Radiosender lassen sich in den Einstellungen ausblenden.
 
-- **Voraussetzungen:** [mpv](https://mpv.io/) muss installiert sein (FritzTV nutzt nicht den integrierten Player) und die FRITZ!Box muss einen Sendersuchlauf abgeschlossen haben (DVB-C-Einstellungen in der Benutzeroberfläche der FRITZ!Box). Verschlüsselte Sender können nicht abgespielt werden.
+- **Voraussetzungen:** Die FRITZ!Box muss einen Sendersuchlauf abgeschlossen haben (DVB-C-Einstellungen in der Benutzeroberfläche der FRITZ!Box). Verschlüsselte Sender können nicht abgespielt werden.
 - **Adresse:** Standardmäßig wird `fritz.box` verwendet. Falls das im eigenen Netz nicht aufgelöst wird, die IP-Adresse der FRITZ!Box eintragen (z. B. `192.168.178.1`).
 - **mpv-Argumente:** Die an mpv übergebenen Argumente lassen sich in den Einstellungen bearbeiten: allgemeine Argumente für alle Videos (*Playback*) und zusätzliche für FRITZ!Box-Sender (*FritzTV*). Die FritzTV-Voreinstellungen sind auf die FRITZ!Box abgestimmt (`--rtsp-transport=udp` ist notwendig, die FRITZ!Box unterstützt kein RTSP über TCP; längere Stream-Analyse und ein Anfangspuffer vermeiden Ruckler). Für Live-Sender und die Mediathek werden sie nicht verwendet, diese starten daher ohne Verzögerung.
 - **Ein Stream pro Gerät:** Die FRITZ!Box liefert nur einen Sender pro Gerät, deshalb beendet der Start eines Senders den vorherigen.
@@ -51,7 +51,7 @@ Televido kann die DVB-C-Sender einer FRITZ!Box Cable (z. B. 6490, 6591, 6660, 66
   ```
   Firewalls müssen eingehenden UDP-Verkehr von der FRITZ!Box zulassen.
 
-FritzTV startet mpv als normalen Prozess und ist daher für native Installationen gedacht (siehe [Bauen unter Arch Linux](#bauen-unter-arch-linux)). In der Flatpak-Sandbox steht mpv nicht zur Verfügung.
+FritzTV startet mpv als normalen Prozess und ist daher für native Installationen gedacht (siehe [Bauen unter Arch Linux](#bauen-unter-arch-linux)). Das Entwicklungs-Flatpak ([`build-aux/de.k_bo.Televido.Devel.json`](build-aux/de.k_bo.Televido.Devel.json)) enthält mpv ebenfalls.
 
 ## Bauen unter Arch Linux
 

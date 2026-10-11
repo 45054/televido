@@ -133,7 +133,7 @@ impl TvApplication {
                 .cloned()
         })
         .await
-        .wrap_err("Failed to connect to the session D-Bus")
+        .wrap_err_with(|| gettext("Failed to connect to the session D-Bus"))
     }
 
     pub fn window(&self) -> TvWindow {
