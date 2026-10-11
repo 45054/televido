@@ -46,6 +46,15 @@ mod imp {
                     _ => (),
                 }
             });
+            klass.install_action("window.search", None, |slf, _, _| {
+                let slf = slf.imp();
+                match slf.stack.visible_child_name().as_deref() {
+                    Some("live") => slf.live_view.focus_search(),
+                    Some("mediathek") => slf.mediathek_view.focus_search(),
+                    Some("fritztv") => slf.fritztv_view.focus_search(),
+                    _ => (),
+                }
+            });
             klass.install_action("window.show-live", None, |slf, _, _| {
                 slf.imp().stack.set_visible_child_name("live")
             });

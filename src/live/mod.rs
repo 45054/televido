@@ -3,10 +3,12 @@
 
 mod card;
 mod channels;
+mod filter;
 mod view;
 
 pub use self::{
     card::TvLiveCard,
     channels::{ChannelKind, ChannelObject},
+    filter::channel_filter,
     view::TvLiveView,
 };

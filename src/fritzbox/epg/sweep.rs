@@ -5,6 +5,7 @@
 //! the tuner is idle.
 
 use std::{
+    cmp::Reverse,
     collections::{HashMap, HashSet},
     sync::Arc,
     time::{Duration, SystemTime, UNIX_EPOCH},
@@ -16,9 +17,10 @@ use tokio::{
 };
 
 use super::{
-    mux,
+    mux::{self, Mux},
     rtsp::StatusError,
     scan::{self, ScanError},
+    store::EpgStore,
     Inner,
 };
 use crate::fritzbox::FritzChannel;
@@ -59,7 +61,30 @@ fn is_cancelled(cancel: &watch::Receiver<()>) -> bool {
     cancel.has_changed().is_err()
 }
 
+/// Returns the multiplex to scan next: the most urgent one, and of equally
+/// urgent ones the first, so that the channels at the top of the list are
+/// filled first. Multiplexes that failed are skipped until they are retried.
+fn next_mux<'a>(
+    store: &EpgStore,
+    muxes: &'a [Mux],
+    retry_at: &HashMap<String, Instant>,
+    now: i64,
+    instant: Instant,
+) -> Option<&'a Mux> {
+    muxes
+        .iter()
+        .filter(|mux| retry_at.get(&mux.key).is_none_or(|retry| *retry <= instant))
+        .filter_map(|mux| Some((store.scan_urgency(mux, now)?, mux)))
+        // unlike `max_by_key`, `min_by_key` returns the first of equal ones
+        .min_by_key(|(urgency, _)| Reverse(*urgency))
+        .map(|(_, mux)| mux)
+}
+
 /// Scans the multiplexes of `channels` until `cancel` is dropped.
+///
+/// After every scan, the next multiplex is chosen anew: channels without
+/// programme information come first, and the events of other multiplexes
+/// ("EIT other") that a scan provided are taken into account.
 pub async fn run(
     inner: Arc<Inner>,
     channels: Vec<FritzChannel>,
@@ -76,110 +101,198 @@ pub async fn run(
     // multiplexes that only work with the full list of PIDs
     let mut full_pids: HashSet<String> = HashSet::new();
 
-    'sweep: loop {
-        for mux in &muxes {
-            if is_cancelled(&cancel) {
-                return;
-            }
+    loop {
+        if is_cancelled(&cancel) {
+            return;
+        }
 
-            // let playback use the tuner
-            while inner.tuner.is_playing() {
+        // let playback use the tuner
+        while inner.tuner.is_playing() {
+            tokio::select! {
+                _ = cancelled(&mut cancel) => return,
+                _ = inner.tuner.playback_ended() => {}
+            }
+            tokio::select! {
+                _ = cancelled(&mut cancel) => return,
+                _ = sleep(timing.settle) => {}
+            }
+        }
+
+        let next = {
+            let store = inner.store();
+            next_mux(&store, &muxes, &retry_at, unix_now(), Instant::now())
+        };
+        let Some(mux) = next else {
+            tokio::select! {
+                _ = cancelled(&mut cancel) => return,
+                _ = sleep(timing.poll) => {}
+            }
+            continue;
+        };
+
+        let url = if full_pids.contains(&mux.key) {
+            &mux.fallback_url
+        } else {
+            &mux.scan_url
+        };
+        tracing::debug!("reading the programme guide of {}", mux.key);
+
+        let guard = inner.tuner.lock_session().await;
+        if inner.tuner.is_playing() {
+            continue;
+        }
+        let result = {
+            let mut cancel = cancel.clone();
+            scan::scan(url, mux.channel_pids().collect(), async {
                 tokio::select! {
-                    _ = cancelled(&mut cancel) => return,
-                    _ = inner.tuner.playback_ended() => {}
+                    _ = inner.tuner.playback_started() => {}
+                    _ = cancelled(&mut cancel) => {}
                 }
-                tokio::select! {
-                    _ = cancelled(&mut cancel) => return,
-                    _ = sleep(timing.settle) => {}
-                }
-            }
+            })
+            .await
+        };
+        drop(guard);
 
-            if retry_at
-                .get(&mux.key)
-                .is_some_and(|retry| *retry > Instant::now())
-            {
-                continue;
-            }
-            if !inner.store().needs_scan(mux, unix_now()) {
-                continue;
-            }
-
-            let url = if full_pids.contains(&mux.key) {
-                &mux.fallback_url
-            } else {
-                &mux.scan_url
-            };
-            tracing::debug!("reading the programme guide of {}", mux.key);
-
-            let guard = inner.tuner.lock_session().await;
-            if inner.tuner.is_playing() {
-                continue 'sweep;
-            }
-            let result = {
-                let mut cancel = cancel.clone();
-                scan::scan(url, mux.channel_pids().collect(), async {
-                    tokio::select! {
-                        _ = inner.tuner.playback_started() => {}
-                        _ = cancelled(&mut cancel) => {}
-                    }
-                })
-                .await
-            };
-            drop(guard);
-
-            match result {
-                Ok(scan) => {
-                    let now = unix_now();
-                    if scan.pat.is_none() {
-                        // maybe the FRITZ!Box only starts the stream if it
-                        // contains audio or video
-                        if !full_pids.contains(&mux.key) && mux.scan_url != mux.fallback_url {
-                            tracing::info!(
-                                "received no service information from {}, trying again with all PIDs",
-                                mux.key
-                            );
-                            full_pids.insert(mux.key.clone());
-                            continue 'sweep;
-                        }
-                        tracing::warn!("received no service information from {}", mux.key);
-                        retry_at.insert(mux.key.clone(), Instant::now() + timing.retry);
-                    }
-                    tracing::debug!(
-                        "{}: {} services, {} EIT sections",
-                        mux.key,
-                        scan.pat.as_ref().map_or(0, |pat| pat.programs.len()),
-                        scan.eit.len()
+        match result {
+            Ok(scan) => {
+                let now = unix_now();
+                // maybe the FRITZ!Box only starts the stream if it contains
+                // audio or video
+                if scan.pat.is_none()
+                    && !full_pids.contains(&mux.key)
+                    && mux.scan_url != mux.fallback_url
+                {
+                    tracing::info!(
+                        "received no service information from {}, trying again with all PIDs",
+                        mux.key
                     );
-                    {
-                        let mut store = inner.store();
-                        store.add_scan(mux, &scan, now);
-                        store.prune(now);
-                    }
-                    inner.save_cache().await;
-                    let _ = notify.send(());
+                    full_pids.insert(mux.key.clone());
+                    continue;
                 }
-                // playback started or the sweep was cancelled
-                Err(ScanError::Stopped) => continue 'sweep,
-                Err(ScanError::Failed(e)) => {
-                    let rejected = e.downcast_ref::<StatusError>().is_some();
-                    if rejected && !full_pids.contains(&mux.key) && mux.scan_url != mux.fallback_url
-                    {
-                        tracing::info!(
-                            "{} rejected the stream without audio and video, trying again with all PIDs: {e:#}",
-                            mux.key
-                        );
-                        full_pids.insert(mux.key.clone());
-                        continue 'sweep;
-                    }
-                    tracing::warn!("failed to read the programme guide of {}: {e:#}", mux.key);
+                // the scan isn't remembered without the tables that identify
+                // the multiplex, so it would be chosen again right away
+                if scan.original_network_id().is_none() {
+                    tracing::warn!("received no usable service information from {}", mux.key);
                     retry_at.insert(mux.key.clone(), Instant::now() + timing.retry);
                 }
+                tracing::debug!(
+                    "{}: {} services, {} EIT sections",
+                    mux.key,
+                    scan.pat.as_ref().map_or(0, |pat| pat.programs.len()),
+                    scan.eit.len()
+                );
+                {
+                    let mut store = inner.store();
+                    store.add_scan(mux, &scan, now);
+                    store.prune(now);
+                }
+                inner.save_cache().await;
+                let _ = notify.send(());
+            }
+            // playback started or the sweep was cancelled
+            Err(ScanError::Stopped) => continue,
+            Err(ScanError::Failed(e)) => {
+                let rejected = e.downcast_ref::<StatusError>().is_some();
+                if rejected && !full_pids.contains(&mux.key) && mux.scan_url != mux.fallback_url {
+                    tracing::info!(
+                        "{} rejected the stream without audio and video, trying again with all PIDs: {e:#}",
+                        mux.key
+                    );
+                    full_pids.insert(mux.key.clone());
+                    continue;
+                }
+                tracing::warn!("failed to read the programme guide of {}: {e:#}", mux.key);
+                retry_at.insert(mux.key.clone(), Instant::now() + timing.retry);
             }
         }
+    }
+}
 
-        tokio::select! {
-            _ = cancelled(&mut cancel) => return,
-            _ = sleep(timing.poll) => {}
+#[cfg(test)]
+mod tests {
+    use super::{
+        super::{
+            scan::Scan,
+            si::{Eit, EitEvent, Pat, ServiceKey},
+            store::Urgency,
+        },
+        *,
+    };
+
+    const NOW: i64 = 1_700_000_000;
+
+    /// Three multiplexes with one channel each.
+    fn muxes() -> Vec<Mux> {
+        mux::group(&[450, 338, 594].map(|frequency| FritzChannel {
+            name: format!("Channel {frequency}"),
+            url: format!(
+                "rtsp://192.168.178.1:554/?avm=1&freq={frequency}&msys=dvbc&mtype=256qam&sr=6900&pids=0,16,17,18,20,100,110"
+            ),
+        }))
+    }
+
+    /// A scan at `time` that provides a long event of the channel.
+    fn scan(transport_stream_id: u16, time: i64) -> Scan {
+        Scan {
+            pat: Some(Pat {
+                transport_stream_id,
+                programs: vec![(3, 100)],
+            }),
+            sdt: None,
+            eit: vec![Eit {
+                table_id: 0x4E,
+                service: ServiceKey {
+                    original_network_id: 1,
+                    transport_stream_id,
+                    service_id: 3,
+                },
+                version: 0,
+                section_number: 0,
+                events: vec![EitEvent {
+                    event_id: 1,
+                    start: time - 60,
+                    end: time + 24 * 3600,
+                    title: "Show".to_owned(),
+                    subtitle: None,
+                    description: None,
+                }],
+            }],
         }
+    }
+
+    #[test]
+    fn scans_channels_without_programme_first() {
+        let muxes = muxes();
+        let instant = Instant::now();
+        let mut retry_at = HashMap::new();
+        let mut store = EpgStore::default();
+        let next = |store: &EpgStore, retry_at: &HashMap<String, Instant>, instant| {
+            next_mux(store, &muxes, retry_at, NOW, instant).map(|mux| mux.key.clone())
+        };
+
+        // the data of the first multiplex is old, the others have none
+        store.add_scan(&muxes[0], &scan(1, NOW - 3600), NOW - 3600);
+        assert_eq!(store.scan_urgency(&muxes[0], NOW), Some(Urgency::Refresh));
+        assert_eq!(
+            next(&store, &retry_at, instant),
+            Some(muxes[1].key.clone()),
+            "the first multiplex without data comes first"
+        );
+
+        // multiplexes that failed are skipped until they are retried
+        retry_at.insert(muxes[1].key.clone(), instant + Duration::from_secs(60));
+        assert_eq!(next(&store, &retry_at, instant), Some(muxes[2].key.clone()));
+        assert_eq!(
+            next(&store, &retry_at, instant + Duration::from_secs(60)),
+            Some(muxes[1].key.clone())
+        );
+
+        // old data is refreshed afterwards
+        store.add_scan(&muxes[1], &scan(2, NOW), NOW);
+        store.add_scan(&muxes[2], &scan(3, NOW), NOW);
+        assert_eq!(next(&store, &retry_at, instant), Some(muxes[0].key.clone()));
+
+        store.add_scan(&muxes[0], &scan(1, NOW), NOW);
+        assert_eq!(next(&store, &retry_at, instant), None);
     }
 }

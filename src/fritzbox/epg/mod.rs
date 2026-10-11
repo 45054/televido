@@ -9,7 +9,8 @@
 //! the EIT of a channel is only complete on its own multiplex (cable
 //! networks often send the current and next event of other multiplexes
 //! as well), Televido visits the multiplexes one after another with short
-//! RTSP sessions while no channel is playing.
+//! RTSP sessions while no channel is playing, those of channels without
+//! programme information first.
 //!
 //! - [`rtsp`] is a minimal RTSP client that receives the transport stream.
 //! - [`ts`], [`si`] and [`text`] parse the transport stream and the tables.

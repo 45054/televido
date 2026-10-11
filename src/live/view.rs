@@ -1,6 +1,8 @@
 // SPDX-FileCopyrightText: David Cabot <d-k-bo@mailbox.org>
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+use std::cell::OnceCell;
+
 use adw::{gio, glib, gtk, prelude::*, subclass::prelude::*};
 use eyre::WrapErr;
 use gettextrs::gettext;
@@ -13,7 +15,7 @@ use crate::{
     zapp::{ChannelId, ChannelInfo, Show, ShowsResult},
 };
 
-use super::{card::TvLiveCard, channels::ChannelObject};
+use super::{card::TvLiveCard, channels::ChannelObject, filter::channel_filter};
 
 mod imp {
     use super::*;
@@ -26,7 +28,13 @@ mod imp {
         #[template_child]
         spinner: TemplateChild<gtk::Spinner>,
         #[template_child]
+        search_entry: TemplateChild<gtk::SearchEntry>,
+        #[template_child]
+        results_stack: TemplateChild<gtk::Stack>,
+        #[template_child]
         channels_list: TemplateChild<gtk::ListBox>,
+
+        filter: OnceCell<gtk::CustomFilter>,
     }
 
     impl TvLiveView {
@@ -114,6 +122,17 @@ mod imp {
 
             match self.load_channels().await {
                 Ok(channels) => {
+                    // the list is empty if the channels couldn't be loaded
+                    self.search_entry.set_visible(channels.n_items() > 0);
+                    let channels =
+                        gtk::FilterListModel::new(Some(channels), self.filter.get().cloned());
+                    channels.connect_items_changed(glib::clone!(
+                        #[weak(rename_to = slf)]
+                        self,
+                        move |channels, _, _, _| slf.show_results(channels.n_items())
+                    ));
+                    self.show_results(channels.n_items());
+
                     self.channels_list.bind_model(Some(&channels), |channel| {
                         glib::Object::builder::<TvLiveCard>()
                             .property("channel", channel)
@@ -125,6 +144,20 @@ mod imp {
                 }
                 Err(e) => show_error(e.wrap_err(gettext("Failed to load livestream channels"))),
             }
+        }
+
+        /// Shows the list, or a hint if no channel matches the filter.
+        fn show_results(&self, matches: u32) {
+            let page = if matches == 0 && !self.search_entry.text().is_empty() {
+                "no-matches"
+            } else {
+                "list"
+            };
+            self.results_stack.set_visible_child_name(page);
+        }
+
+        pub(super) fn focus_search(&self) {
+            self.search_entry.grab_focus();
         }
     }
 
@@ -148,6 +181,12 @@ mod imp {
             self.parent_constructed();
 
             let settings = TvSettings::get();
+
+            self.filter
+                .set(channel_filter(&self.search_entry))
+                .expect("the view is constructed once");
+            // typing anywhere in the view filters the channels
+            self.search_entry.set_key_capture_widget(Some(&*self.obj()));
 
             self.channels_list.connect_row_activated(|_, row| {
                 let row = row
@@ -182,5 +221,9 @@ impl TvLiveView {
     pub fn reload(&self) {
         let slf = self.imp().to_owned();
         spawn(async move { slf.reload().await });
+    }
+
+    pub fn focus_search(&self) {
+        self.imp().focus_search();
     }
 }

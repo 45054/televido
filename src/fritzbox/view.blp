@@ -18,65 +18,93 @@ template $TvFritzView: Adw.Bin {
     Gtk.StackPage {
       name: "channels";
 
-      child: Gtk.ScrolledWindow {
-        hscrollbar-policy: never;
-
+      child: Adw.ToolbarView {
+        [top]
         Adw.Clamp {
-          Gtk.Box {
-            orientation: vertical;
-            spacing: 24;
+          Gtk.SearchEntry search_entry {
+            placeholder-text: _("Filter channels");
             margin-top: 12;
-            margin-bottom: 12;
             margin-start: 12;
             margin-end: 12;
+          }
+        }
 
-            Adw.PreferencesGroup tv_group {
-              title: _("TV");
+        Gtk.Stack results_stack {
+          Gtk.StackPage {
+            name: "list";
 
-              Gtk.ListBox tv_list {
-                selection-mode: none;
+            child: Gtk.ScrolledWindow {
+              hscrollbar-policy: never;
 
-                styles [
-                  "boxed-list"
-                ]
+              Adw.Clamp {
+                Gtk.Box {
+                  orientation: vertical;
+                  spacing: 24;
+                  margin-top: 12;
+                  margin-bottom: 12;
+                  margin-start: 12;
+                  margin-end: 12;
+
+                  Adw.PreferencesGroup tv_group {
+                    title: _("TV");
+
+                    Gtk.ListBox tv_list {
+                      selection-mode: none;
+
+                      styles [
+                        "boxed-list"
+                      ]
+                    }
+                  }
+
+                  Adw.PreferencesGroup hd_group {
+                    title: _("HD");
+
+                    Gtk.ListBox hd_list {
+                      selection-mode: none;
+
+                      styles [
+                        "boxed-list"
+                      ]
+                    }
+                  }
+
+                  Adw.PreferencesGroup sd_group {
+                    title: _("SD");
+
+                    Gtk.ListBox sd_list {
+                      selection-mode: none;
+
+                      styles [
+                        "boxed-list"
+                      ]
+                    }
+                  }
+
+                  Adw.PreferencesGroup radio_group {
+                    title: _("Radio");
+
+                    Gtk.ListBox radio_list {
+                      selection-mode: none;
+
+                      styles [
+                        "boxed-list"
+                      ]
+                    }
+                  }
+                }
               }
-            }
+            };
+          }
 
-            Adw.PreferencesGroup hd_group {
-              title: _("HD");
+          Gtk.StackPage {
+            name: "no-matches";
 
-              Gtk.ListBox hd_list {
-                selection-mode: none;
-
-                styles [
-                  "boxed-list"
-                ]
-              }
-            }
-
-            Adw.PreferencesGroup sd_group {
-              title: _("SD");
-
-              Gtk.ListBox sd_list {
-                selection-mode: none;
-
-                styles [
-                  "boxed-list"
-                ]
-              }
-            }
-
-            Adw.PreferencesGroup radio_group {
-              title: _("Radio");
-
-              Gtk.ListBox radio_list {
-                selection-mode: none;
-
-                styles [
-                  "boxed-list"
-                ]
-              }
-            }
+            child: Adw.StatusPage {
+              icon-name: "item-missing-symbolic";
+              title: _("No Matching Channels");
+              description: _("Try a different channel name");
+            };
           }
         }
       };
@@ -86,7 +114,7 @@ template $TvFritzView: Adw.Bin {
       name: "empty";
 
       child: Adw.StatusPage {
-        icon-name: "modem-symbolic";
+        icon-name: "cable-tv-symbolic";
         title: _("No Channels Found");
         description: _("Run a channel scan in the DVB-C settings of your FRITZ!Box, then reload.");
 
