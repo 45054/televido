@@ -1,4 +1,6 @@
 # SPDX-FileCopyrightText: d-k-bo <d-k-bo@mailbox.org>
+# SPDX-FileCopyrightText: 2026 Televido contributors
+# SPDX-FileContributor: Claude (Anthropic)
 # SPDX-License-Identifier: CC0-1.0
 
 desktop_file = i18n.merge_file(

@@ -1,4 +1,5 @@
-// SPDX-FileCopyrightText: David Cabot <d-k-bo@mailbox.org>
+// SPDX-FileCopyrightText: 2026 Televido contributors
+// SPDX-FileContributor: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 //! Decoding of DVB text strings (ETSI EN 300 468, annex A).

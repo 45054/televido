@@ -1,4 +1,6 @@
 # SPDX-FileCopyrightText: d-k-bo <d-k-bo@mailbox.org>
+# SPDX-FileCopyrightText: 2026 Televido contributors
+# SPDX-FileContributor: Claude (Anthropic)
 # SPDX-License-Identifier: CC0-1.0
 
 project(
@@ -43,9 +45,9 @@ CONFIG = {
   'APP_ID': APP_ID,
   'BASE_APP_ID': BASE_APP_ID,
   'APP_NAME': 'Televido',
-  'AUTHOR': 'David Cabot',
-  'PROJECT_URL': 'https://github.com/d-k-bo/televido',
-  'ISSUE_URL': 'https://github.com/d-k-bo/televido/issues',
+  'AUTHOR': 'David Cabot, Televido contributors',
+  'PROJECT_URL': 'https://github.com/45054/televido',
+  'ISSUE_URL': 'https://github.com/45054/televido/issues',
   'LOCALEDIR': get_option('prefix') / get_option('localedir'),
   'PKGDATADIR': get_option('prefix') / get_option('datadir') / meson.project_name(),
 }
