@@ -83,14 +83,13 @@
       "buildsystem": "meson",
       "config-opts": [
         "-Ddemos=false",
-        "-Dtests=false",
-        "-Dvulkan=disabled"
+        "-Dtests=false"
       ],
       "sources": [
         {
           "type": "git",
           "url": "https://code.videolan.org/videolan/libplacebo.git",
-          "tag": "v7.349.0"
+          "tag": "v7.360.0"
         }
       ]
     },
