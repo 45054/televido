@@ -21,6 +21,8 @@
 // SPDX-FileCopyrightText: d-k-bo <d-k-bo@mailbox.org>
 // SPDX-License-Identifier: MIT
 
+use std::time::Duration;
+
 use adw::glib;
 use indexmap::IndexMap;
 use serde::Deserialize;
@@ -39,6 +41,8 @@ impl Zapp {
         Ok(Self {
             http: reqwest::Client::builder()
                 .user_agent(format!("{APP_ID}/{VERSION} ({PROJECT_URL})"))
+                .connect_timeout(Duration::from_secs(5))
+                .timeout(Duration::from_secs(15))
                 .build()?,
         })
     }

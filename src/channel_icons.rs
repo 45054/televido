@@ -3,36 +3,42 @@
 // SPDX-FileContributor: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+use std::cell::Cell;
+
 use adw::{gdk, gdk::gdk_pixbuf, glib, prelude::*};
 use eyre::WrapErr;
 use phf::phf_map;
 use tracing::error;
 
-use crate::application::TvApplication;
-
 pub fn load_channel_icon(channel_id: Option<&str>, image: &gtk::Image, size: i32) {
-    let Some(icon_name) = channel_id.and_then(|id| ICON_NAMES.get(id)) else {
+    let Some(icon_name) = channel_id.and_then(|id| ICON_NAMES.get(id)).copied() else {
         image.set_icon_name(Some("image-missing-symbolic"));
         return;
     };
 
-    let application = TvApplication::get();
-    let style_manager = application.style_manager();
-    let scale_factor = application.window().surface().unwrap().scale_factor();
-    let size = scale_factor * size;
-
+    let style_manager = adw::StyleManager::default();
     set_icon(&style_manager, image, icon_name, size);
 
-    style_manager.connect_dark_notify(glib::clone!(
+    // the icon is rendered for the color scheme and the scale of the display
+    let dark_handler = style_manager.connect_dark_notify(glib::clone!(
         #[weak]
         image,
         move |style_manager| set_icon(style_manager, &image, icon_name, size)
     ));
+    let dark_handler = Cell::new(Some(dark_handler));
+    image.connect_destroy(move |_| {
+        if let Some(handler) = dark_handler.take() {
+            adw::StyleManager::default().disconnect(handler);
+        }
+    });
+    image.connect_scale_factor_notify(move |image| {
+        set_icon(&adw::StyleManager::default(), image, icon_name, size)
+    });
 
     fn set_icon(style_manager: &adw::StyleManager, image: &gtk::Image, icon_name: &str, size: i32) {
         match load_icon(
             icon_name,
-            size,
+            size * image.scale_factor(),
             ColorScheme::for_style_manager(style_manager),
         ) {
             Ok(texture) => image.set_paintable(Some(&texture)),
@@ -103,7 +109,6 @@ static ICON_NAMES: phf::Map<&'static str, &'static str> = phf_map! {
     "ARTE.PL" => "arte.svg",
     "BR" => "br.svg",
     "DW" => "deutsche-welle.svg",
-    "Funk.net" => "funk.svg",
     "HR" => "hr.svg",
     "KiKA" => "kika.svg",
     "MDR" => "mdr.svg",

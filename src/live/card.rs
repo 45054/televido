@@ -3,19 +3,12 @@
 // SPDX-FileContributor: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-use std::{
-    cell::{Cell, RefCell},
-    time::Duration,
-};
+use std::cell::{Cell, RefCell};
 
 use adw::{glib, gtk, prelude::*, subclass::prelude::*};
 
 use crate::{
-    application::VideoInfo,
-    channel_icons::load_channel_icon,
-    mpv,
-    utils::{show_error, spawn, tokio},
-    TvApplication,
+    application::VideoInfo, channel_icons::load_channel_icon, mpv, utils::show_error, TvApplication,
 };
 
 use super::channels::{ChannelKind, ChannelObject};
@@ -196,14 +189,19 @@ mod imp {
             });
 
             // the progress advances every 10 seconds
-            let slf = self.downgrade();
-            spawn(async move {
-                loop {
-                    let Some(slf) = slf.upgrade() else { break };
-                    slf.update_progress();
-                    tokio(async { tokio::time::sleep(Duration::from_secs(10)).await }).await;
-                }
-            });
+            glib::timeout_add_seconds_local(
+                10,
+                glib::clone!(
+                    #[weak(rename_to = slf)]
+                    self,
+                    #[upgrade_or]
+                    glib::ControlFlow::Break,
+                    move || {
+                        slf.update_progress();
+                        glib::ControlFlow::Continue
+                    }
+                ),
+            );
         }
     }
     impl WidgetImpl for TvLiveCard {}

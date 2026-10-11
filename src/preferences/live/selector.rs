@@ -18,7 +18,7 @@ use crate::{
 use super::selector_row::TvLiveChannelSelectorRow;
 
 mod imp {
-    use crate::utils::{spawn, ListStoreExtManual};
+    use crate::utils::{show_error, spawn, ListStoreExtManual};
 
     use super::*;
 
@@ -41,7 +41,13 @@ mod imp {
 
     impl TvLiveChannelSelector {
         async fn load(&self) {
-            let live_channels = TvApplication::get().live_channels().await;
+            let live_channels = match TvApplication::get().live_channels().await {
+                Ok(live_channels) => live_channels,
+                Err(e) => {
+                    show_error(eyre::eyre!("{e:#}"));
+                    return;
+                }
+            };
             let mut visible_channels = self.settings.live_channels();
 
             self.channel_rows

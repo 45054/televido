@@ -173,12 +173,8 @@ mod imp {
                 }
                 Err(e) => {
                     let msg = gettext("Failed to load external applications");
-                    self.program_list.add(
-                        &adw::ActionRow::builder()
-                            .title(&msg)
-                            .subtitle(gettext("See the terminal output for details."))
-                            .build(),
-                    );
+                    self.program_list
+                        .add(&adw::ActionRow::builder().title(&msg).build());
                     show_error(e.wrap_err(msg));
                 }
             }

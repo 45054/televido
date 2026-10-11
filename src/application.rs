@@ -6,7 +6,7 @@
 use std::{
     cell::{OnceCell, RefCell},
     rc::Rc,
-    sync::{Arc, OnceLock},
+    sync::Arc,
 };
 
 use adw::{gio, glib, prelude::*, subclass::prelude::*};
@@ -36,7 +36,7 @@ mod imp {
         pub(super) zapp: Arc<Zapp>,
         #[default(Arc::new(FritzBox::new().expect("failed to initialize FRITZ!Box client")))]
         pub(super) fritzbox: Arc<FritzBox>,
-        pub(super) live_channels: AsyncResource<Rc<crate::zapp::ChannelInfoList>>,
+        pub(super) live_channels: AsyncResource<LiveChannels>,
         pub(super) window: RefCell<Option<glib::WeakRef<TvWindow>>>,
     }
 
@@ -99,19 +99,14 @@ impl TvApplication {
             move || {
                 let zapp = zapp.clone();
                 Box::pin(async move {
-                    match tokio(async move {
-                        zapp.channel_info_list()
-                            .await
-                            .wrap_err("Failed to load channel info list")
-                    })
-                    .await
-                    {
-                        Ok(channels) => Rc::new(channels),
-                        Err(e) => {
-                            show_error(e.wrap_err(gettext("Failed to load livestream channels")));
-                            Default::default()
-                        }
-                    }
+                    tokio(async move { zapp.channel_info_list().await })
+                        .await
+                        .map(Rc::new)
+                        .map_err(|e| {
+                            let e = e.wrap_err(gettext("Failed to load livestream channels"));
+                            tracing::error!("{e:?}");
+                            Rc::new(e)
+                        })
                 })
             }
         });
@@ -127,19 +122,18 @@ impl TvApplication {
         })
     }
 
-    pub async fn dbus() -> zbus::Connection {
-        static DBUS: OnceLock<zbus::Connection> = OnceLock::new();
-        match DBUS.get() {
-            Some(dbus) => dbus.clone(),
-            None => {
-                let conn = tokio(async { zbus::Connection::session().await })
-                    .await
-                    .expect("Failed to acquire a connection to the session D-Bus.");
-                DBUS.set(conn.clone())
-                    .expect("D-Bus connection has already been acquired.");
-                conn
-            }
-        }
+    /// The connection to the session bus, established on first use.
+    pub async fn dbus() -> eyre::Result<zbus::Connection> {
+        static DBUS: tokio::sync::OnceCell<zbus::Connection> = tokio::sync::OnceCell::const_new();
+
+        // concurrent first calls share one connection attempt
+        tokio(async {
+            DBUS.get_or_try_init(zbus::Connection::session)
+                .await
+                .cloned()
+        })
+        .await
+        .wrap_err("Failed to connect to the session D-Bus")
     }
 
     pub fn window(&self) -> TvWindow {
@@ -163,7 +157,7 @@ impl TvApplication {
         self.imp().fritzbox.clone()
     }
 
-    pub fn live_channels(&self) -> AsyncResource<Rc<crate::zapp::ChannelInfoList>> {
+    pub fn live_channels(&self) -> AsyncResource<LiveChannels> {
         self.imp().live_channels.clone()
     }
 
@@ -303,6 +297,9 @@ impl TvApplication {
         about.present(Some(&self.window()));
     }
 }
+
+/// The livestream channels, or why they couldn't be loaded.
+pub type LiveChannels = Result<Rc<crate::zapp::ChannelInfoList>, Rc<eyre::Report>>;
 
 #[derive(Debug)]
 pub enum VideoInfo {

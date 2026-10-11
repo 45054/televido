@@ -70,5 +70,25 @@ template $TvLiveView: Adw.Bin {
         }
       };
     }
+
+    Gtk.StackPage {
+      name: "error";
+
+      child: Adw.StatusPage error_page {
+        icon-name: "error-symbolic";
+        title: _("Could Not Load Channels");
+
+        child: Gtk.Button {
+          label: _("Retry");
+          halign: center;
+          action-name: "window.reload";
+
+          styles [
+            "pill",
+            "suggested-action"
+          ]
+        };
+      };
+    }
   }
 }

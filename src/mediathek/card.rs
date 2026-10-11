@@ -34,6 +34,9 @@ mod imp {
 
         #[property(get, set)]
         expanded: Cell<bool>,
+
+        /// Connected to the global settings, disconnected on dispose.
+        pub(super) settings_handler: RefCell<Option<glib::SignalHandlerId>>,
     }
     impl TvMediathekCard {
         fn set_icon(&self) {
@@ -71,6 +74,12 @@ mod imp {
             self.revealer.connect_child_revealed_notify(|revealer| {
                 revealer.set_visible(revealer.is_child_revealed())
             });
+        }
+
+        fn dispose(&self) {
+            if let Some(handler) = self.settings_handler.take() {
+                TvSettings::get().disconnect(handler);
+            }
         }
     }
     impl WidgetImpl for TvMediathekCard {}
@@ -169,19 +178,21 @@ impl TvMediathekCard {
 
         let play_default =
             video_url_action!("play-default", play, VideoQuality::default_playback());
-        TvSettings::get().connect_default_playback_quality_changed(glib::clone!(
-            #[weak(rename_to = slf)]
-            self,
-            #[weak]
-            play_default,
-            move |_| {
-                play_default.set_enabled(
-                    slf.show()
-                        .and_then(|show| show.video_url(VideoQuality::default_playback()))
-                        .is_some(),
-                );
-            }
-        ));
+        let settings_handler =
+            TvSettings::get().connect_default_playback_quality_changed(glib::clone!(
+                #[weak(rename_to = slf)]
+                self,
+                #[weak]
+                play_default,
+                move |_| {
+                    play_default.set_enabled(
+                        slf.show()
+                            .and_then(|show| show.video_url(VideoQuality::default_playback()))
+                            .is_some(),
+                    );
+                }
+            ));
+        self.imp().settings_handler.replace(Some(settings_handler));
         video_url_action!("play-high", play, VideoQuality::High);
         video_url_action!("play-medium", play, VideoQuality::Medium);
         video_url_action!("play-low", play, VideoQuality::Low);
@@ -231,7 +242,7 @@ impl TvMediathekCard {
                     .and_then(|show| show.website_url())
                     .expect("action must only be enabled if url is not None");
                 if let Err(e) = gtk::UriLauncher::new(&url)
-                    .launch_future(slf.root().and_downcast_ref::<adw::Window>())
+                    .launch_future(slf.root().and_downcast_ref::<gtk::Window>())
                     .await
                 {
                     show_error(

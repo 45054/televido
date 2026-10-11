@@ -63,6 +63,29 @@ template $TvMediathekView: Adw.Bin {
         description: _("Try different search terms or adjust the search filters");
       }
 
+      Adw.Spinner loading_view {
+        halign: center;
+        valign: center;
+        width-request: 32;
+        height-request: 32;
+      }
+
+      Adw.StatusPage error_view {
+        icon-name: "error-symbolic";
+        title: _("Could Not Load Results");
+
+        child: Gtk.Button {
+          label: _("Retry");
+          halign: center;
+          action-name: "window.reload";
+
+          styles [
+            "pill",
+            "suggested-action"
+          ]
+        };
+      }
+
       Gtk.ScrolledWindow results_view {
         Adw.Clamp {
           Gtk.Box {

@@ -24,9 +24,18 @@
 			<default>false</default>
 		</key>
 		<key name="sort-by" type="s">
+			<choices>
+				<choice value="channel"/>
+				<choice value="date"/>
+				<choice value="duration"/>
+			</choices>
 			<default>"date"</default>
 		</key>
 		<key name="sort-order" type="s">
+			<choices>
+				<choice value="ascending"/>
+				<choice value="descending"/>
+			</choices>
 			<default>"descending"</default>
 		</key>
 		<key name="use-external-player" type="b">
@@ -45,6 +54,11 @@
 			<default>""</default>
 		</key>
 		<key name="default-playback-quality" type="s">
+			<choices>
+				<choice value="high"/>
+				<choice value="medium"/>
+				<choice value="low"/>
+			</choices>
 			<default>"high"</default>
 		</key>
 		<key name="live-channels" type="as">
