@@ -15,7 +15,7 @@
 			program only facilitates finding and accessing the shows.
 		</p>
 		<p>
-			Televido provides an integrated player for video playback. Additionally, Televido
+			Televido plays videos with mpv. Additionally, Televido
 			supports external programs that are installed on the user's system for video playback
 			and download. Currently supported players: GNOME Videos (Totem), Celluloid, Clapper,
 			Daikhan. Currently supported downloaders: Parabolic.

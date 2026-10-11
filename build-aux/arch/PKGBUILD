@@ -26,10 +26,8 @@ depends=(
     gcc-libs
     glib2
     glibc
-    gstreamer
     gtk4
     libadwaita
-    libclapper-gtk
     mpv
     openssl
 )

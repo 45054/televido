@@ -7,9 +7,8 @@ use adw::{gio, glib, gtk, prelude::*, subclass::prelude::*};
 use gettextrs::gettext;
 
 use crate::{
-    application::TvApplication,
+    application::{TvApplication, VideoInfo},
     channel_icons::load_channel_icon,
-    player::VideoInfo,
     settings::{TvSettings, VideoQuality},
     utils::{show_error, spawn},
 };
@@ -92,11 +91,9 @@ impl TvMediathekCard {
                 .play(VideoInfo::Mediathek {
                     title: show.title(),
                     preferred_quality: quality,
-                    subtitle_uri: show.subtitle_url(),
                     uri_high: show.video_url_high(),
                     uri_medium: show.video_url_medium(),
                     uri_low: show.video_url_low(),
-                    channel_id: show.channel(),
                 })
                 .await
         });

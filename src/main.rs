@@ -11,7 +11,6 @@ mod launcher;
 mod live;
 mod mediathek;
 mod mpv;
-mod player;
 mod preferences;
 mod settings;
 mod utils;
@@ -43,10 +42,6 @@ fn main() -> glib::ExitCode {
     gio::resources_register(
         &gio::Resource::from_data(&glib::Bytes::from_static(GRESOURCE_BYTES)).unwrap(),
     );
-
-    glib::setenv("CLAPPER_USE_PLAYBIN3", "1", false)
-        .expect("failed to set CLAPPER_USE_PLAYBIN3 environment variable");
-    clapper::init().expect("failed to initialize libclapper");
 
     TvApplication::new().run()
 }
