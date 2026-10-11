@@ -10,7 +10,7 @@
 > [!NOTE]
 > ## This is a fork
 >
-> This repository continues [d-k-bo/televido](https://github.com/d-k-bo/televido), which its original author has discontinued (see his notice below). The fork adds [FritzTV](#fritztv-fritzbox-cable-dvb-c), the DVB-C channels of a FRITZ!Box Cable, plays all videos with mpv and contains further changes. Its Arch Linux package is called `televido-fritz-git`.
+> This repository continues [d-k-bo/televido](https://github.com/d-k-bo/televido), which its original author has discontinued (see his notice below). The fork adds [FritzTV](#fritztv-fritzbox-cable-dvb-c), the DVB-C channels of a FRITZ!Box Cable, plays all videos with mpv and contains further changes. Its Arch Linux package is called `televido-fritz-git` and its app ID is `io.github._45054.TelevidoFritz` (earlier versions used upstream's `de.k_bo.Televido`; their settings are taken over on the first start).
 >
 > All changes in this fork since October 2026 were written by Claude, an AI assistant by Anthropic, according to the requirements of the fork's maintainer. Their copyright notices name “Televido contributors”, and the files name Claude as contributor (`SPDX-FileContributor`). The copyright of the original code remains with David Cabot. Everything stays licensed under the GPL-3.0-or-later.
 
@@ -51,7 +51,7 @@ Televido can play the DVB-C channels of a FRITZ!Box Cable (e.g. 6490, 6591, 6660
   ```
   Firewalls must allow incoming UDP traffic from the FRITZ!Box.
 
-FritzTV starts mpv as a regular process and is therefore intended for native installations (see [Building on Arch Linux](#building-on-arch-linux)). The development Flatpak ([`build-aux/de.k_bo.Televido.Devel.json`](build-aux/de.k_bo.Televido.Devel.json)) bundles mpv as well.
+FritzTV starts mpv as a regular process and is therefore intended for native installations (see [Building on Arch Linux](#building-on-arch-linux)). The development Flatpak ([`build-aux/io.github._45054.TelevidoFritz.Devel.json`](build-aux/io.github._45054.TelevidoFritz.Devel.json)) bundles mpv as well.
 
 ## Building on Arch Linux
 
@@ -86,7 +86,7 @@ Televido supports any video player that is [DBus activatable](https://specificat
 To use a custom player, create a flatpak permission override to allow it to access the player. E.g.
 
 ```
-flatpak override --user de.k_bo.Televido --talk-name=org.example.VideoPlayer
+flatpak override --user io.github._45054.TelevidoFritz --talk-name=org.example.VideoPlayer
 ```
 
 and set the video player in the preferences.

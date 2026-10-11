@@ -28,7 +28,7 @@ use adw::{gio, glib, prelude::*};
 use gettextrs::{bind_textdomain_codeset, bindtextdomain, textdomain};
 
 static GRESOURCE_BYTES: &[u8] =
-    gvdb_macros::include_gresource_from_dir!("/de/k_bo/televido", "data/resources");
+    gvdb_macros::include_gresource_from_dir!("/io/github/_45054/TelevidoFritz", "data/resources");
 
 fn main() -> glib::ExitCode {
     tracing_subscriber::fmt()

@@ -10,7 +10,7 @@ use gsettings_macro::gen_settings;
 
 use crate::{config::BASE_APP_ID, zapp::ChannelId};
 
-#[gen_settings(file = "data/de.k_bo.Televido.gschema.xml")]
+#[gen_settings(file = "data/io.github._45054.TelevidoFritz.gschema.xml")]
 #[gen_settings_define(
     key_name = "live-channels",
     arg_type = "Vec<ChannelId>",
@@ -28,6 +28,49 @@ impl TvSettings {
                 .get_or_init(|| TvSettings::new(BASE_APP_ID))
                 .clone()
         })
+    }
+}
+
+/// The settings of the previous app ID `de.k_bo.Televido`, read with the
+/// relocatable schema `<APP_ID>.Legacy` at their previous path.
+const LEGACY_PATH: &str = "/de/k_bo/televido/";
+
+impl TvSettings {
+    /// Takes over the settings that were changed under the previous app ID,
+    /// once.
+    pub fn migrate_legacy(&self) {
+        if self.legacy_settings_migrated() {
+            return;
+        }
+        self.set_legacy_settings_migrated(true);
+
+        let legacy_schema_id = format!("{BASE_APP_ID}.Legacy");
+        let Some(legacy_schema) = gio::SettingsSchemaSource::default()
+            .and_then(|source| source.lookup(&legacy_schema_id, true))
+        else {
+            tracing::warn!("schema {legacy_schema_id} is not installed");
+            return;
+        };
+        let Some(schema) = self.settings_schema() else {
+            return;
+        };
+        let legacy = gio::Settings::with_path(&legacy_schema_id, LEGACY_PATH);
+
+        for key in legacy_schema.list_keys() {
+            // only values the user has changed
+            let Some(value) = legacy.user_value(&key) else {
+                continue;
+            };
+            // e.g. a value that the current choices no longer allow
+            if !schema.has_key(&key) || !schema.key(&key).range_check(&value) {
+                tracing::warn!("not taking over the previous setting {key} = {value}");
+                continue;
+            }
+            match self.set_value(&key, &value) {
+                Ok(()) => tracing::info!("took over the previous setting {key} = {value}"),
+                Err(e) => tracing::warn!("failed to take over the previous setting {key}: {e}"),
+            }
+        }
     }
 }
 

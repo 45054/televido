@@ -13,7 +13,7 @@ project(
 i18n = import('i18n')
 gnome = import('gnome')
 
-BASE_APP_ID = 'de.k_bo.Televido'
+BASE_APP_ID = 'io.github._45054.TelevidoFritz'
 
 if get_option('profile') == 'development'
   PROFILE = 'Devel'

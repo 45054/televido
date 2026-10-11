@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?xml-model href="https://gitlab.gnome.org/GNOME/glib/-/raw/main/gio/gschema.dtd"?>
+<schemalist>
+	<!--
+		The settings of the previous app ID de.k_bo.Televido, without a path.
+		They are read once at /de/k_bo/televido/ to take them over, see
+		TvSettings::migrate_legacy(). Don't change the keys, they describe the
+		settings as they were stored under the previous ID.
+	-->
+	<schema id="io.github._45054.TelevidoFritz.Legacy">
+		<key name="width" type="i">
+			<default>720</default>
+		</key>
+		<key name="height" type="i">
+			<default>480</default>
+		</key>
+		<key name="is-maximized" type="b">
+			<default>false</default>
+		</key>
+		<key name="is-fullscreen" type="b">
+			<default>false</default>
+		</key>
+		<key name="visible-view" type="s">
+			<default>"live"</default>
+		</key>
+		<key name="search-everywhere" type="b">
+			<default>false</default>
+		</key>
+		<key name="include-future" type="b">
+			<default>false</default>
+		</key>
+		<key name="sort-by" type="s">
+			<default>"date"</default>
+		</key>
+		<key name="sort-order" type="s">
+			<default>"descending"</default>
+		</key>
+		<key name="use-external-player" type="b">
+			<default>false</default>
+		</key>
+		<key name="video-player-name" type="s">
+			<default>""</default>
+		</key>
+		<key name="video-player-id" type="s">
+			<default>""</default>
+		</key>
+		<key name="video-downloader-name" type="s">
+			<default>""</default>
+		</key>
+		<key name="video-downloader-id" type="s">
+			<default>""</default>
+		</key>
+		<key name="default-playback-quality" type="s">
+			<default>"high"</default>
+		</key>
+		<key name="live-channels" type="as">
+			<default>[]</default>
+		</key>
+		<key name="fritztv-enabled" type="b">
+			<default>false</default>
+		</key>
+		<key name="fritzbox-address" type="s">
+			<default>"fritz.box"</default>
+		</key>
+		<key name="fritztv-separate-hd-sd" type="b">
+			<default>false</default>
+		</key>
+		<key name="fritztv-show-radio" type="b">
+			<default>true</default>
+		</key>
+		<key name="fritztv-epg" type="b">
+			<default>true</default>
+		</key>
+		<key name="mpv-arguments" type="as">
+			<default>[
+				"--force-window=immediate",
+				"--hwdec=auto",
+				"--msg-level=ffmpeg=fatal"
+			]</default>
+		</key>
+		<key name="mpv-arguments-fritzbox" type="as">
+			<default>[
+				"--rtsp-transport=udp",
+				"--deinterlace=auto",
+				"--cache=yes",
+				"--demuxer-max-bytes=64MiB",
+				"--cache-pause-initial=yes",
+				"--cache-pause-wait=1.5",
+				"--demuxer-lavf-analyzeduration=3",
+				"--demuxer-lavf-probesize=5000000",
+				"--demuxer-lavf-o=buffer_size=4194304"
+			]</default>
+		</key>
+	</schema>
+</schemalist>

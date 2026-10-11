@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: televido\n"
 "Report-Msgid-Bugs-To: https://github.com/45054/televido-fritz/issues\n"
-"POT-Creation-Date: 2026-10-11 19:21+0000\n"
+"POT-Creation-Date: 2026-10-11 19:30+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -18,43 +18,48 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=INTEGER; plural=EXPRESSION;\n"
 
-#: data/de.k_bo.Televido.desktop.in:5 data/de.k_bo.Televido.metainfo.xml.in:6
+#: data/io.github._45054.TelevidoFritz.desktop.in:5
+#: data/io.github._45054.TelevidoFritz.metainfo.xml.in:6
 msgid "Televido"
 msgstr ""
 
-#: data/de.k_bo.Televido.desktop.in:6
+#: data/io.github._45054.TelevidoFritz.desktop.in:6
 msgid "Access German-language public broadcasting live streams and archives"
 msgstr ""
 
 #. Translators: search terms to find this application. Do NOT translate or localize the semicolons. The list MUST also end with a semicolon.
-#: data/de.k_bo.Televido.desktop.in:13
+#: data/io.github._45054.TelevidoFritz.desktop.in:13
 msgid "TV;Television;Livestream;Mediathek;DVB-C;FRITZ!Box;"
 msgstr ""
 
-#: data/de.k_bo.Televido.metainfo.xml.in:7
+#: data/io.github._45054.TelevidoFritz.gschema.xml:7
+msgid "Whether the settings of the previous app ID were taken over"
+msgstr ""
+
+#: data/io.github._45054.TelevidoFritz.metainfo.xml.in:7
 msgid "Access German-language public TV"
 msgstr ""
 
-#: data/de.k_bo.Televido.metainfo.xml.in:9
+#: data/io.github._45054.TelevidoFritz.metainfo.xml.in:9
 msgid ""
 "Televido (“Television” in Esperanto) lets you livestream, search, play and "
 "download media from German-language public television services. It is "
 "powered by APIs provided by the MediathekView project."
 msgstr ""
 
-#: data/de.k_bo.Televido.metainfo.xml.in:13
+#: data/io.github._45054.TelevidoFritz.metainfo.xml.in:13
 msgid ""
 "The presented content is provided directly by the respective television "
 "services, this program only facilitates finding and accessing the shows."
 msgstr ""
 
-#: data/de.k_bo.Televido.metainfo.xml.in:17
+#: data/io.github._45054.TelevidoFritz.metainfo.xml.in:17
 msgid ""
 "Televido can also play the DVB-C channels of a FRITZ!Box Cable in the home "
 "network and shows their program guide, which it reads from the cable signal."
 msgstr ""
 
-#: data/de.k_bo.Televido.metainfo.xml.in:21
+#: data/io.github._45054.TelevidoFritz.metainfo.xml.in:21
 msgid ""
 "Televido plays videos with mpv. Additionally, Televido supports external "
 "programs that are installed on the user's system for video playback and "
@@ -62,122 +67,128 @@ msgid ""
 "Clapper, Daikhan. Currently supported downloaders: Parabolic."
 msgstr ""
 
-#: data/de.k_bo.Televido.metainfo.xml.in:35
+#: data/io.github._45054.TelevidoFritz.metainfo.xml.in:35
 msgid "Livestreams with the current shows"
 msgstr ""
 
-#: data/de.k_bo.Televido.metainfo.xml.in:39
+#: data/io.github._45054.TelevidoFritz.metainfo.xml.in:39
 msgid "Livestreams in the dark style"
 msgstr ""
 
-#: data/de.k_bo.Televido.metainfo.xml.in:43
+#: data/io.github._45054.TelevidoFritz.metainfo.xml.in:43
 msgid "Searching the Mediathek"
 msgstr ""
 
-#: data/de.k_bo.Televido.metainfo.xml.in:47
+#: data/io.github._45054.TelevidoFritz.metainfo.xml.in:47
 msgid "Search results with the details of a show"
 msgstr ""
 
-#: data/de.k_bo.Televido.metainfo.xml.in:71
+#: data/io.github._45054.TelevidoFritz.metainfo.xml.in:71
 msgid "First release of the fork with FRITZ!Box Cable support."
 msgstr ""
 
-#: data/de.k_bo.Televido.metainfo.xml.in:73
+#: data/io.github._45054.TelevidoFritz.metainfo.xml.in:73
 msgid ""
 "Play the DVB-C channels of a FRITZ!Box Cable with mpv in the new FritzTV tab"
 msgstr ""
 
-#: data/de.k_bo.Televido.metainfo.xml.in:74
+#: data/io.github._45054.TelevidoFritz.metainfo.xml.in:74
 msgid ""
 "Show the programme guide of the FritzTV channels, read from the cable signal"
 msgstr ""
 
-#: data/de.k_bo.Televido.metainfo.xml.in:75
+#: data/io.github._45054.TelevidoFritz.metainfo.xml.in:75
 msgid "Show the logos of the FritzTV channels"
 msgstr ""
 
-#: data/de.k_bo.Televido.metainfo.xml.in:76
+#: data/io.github._45054.TelevidoFritz.metainfo.xml.in:76
 msgid "Filter the live and FritzTV channels by name while typing"
 msgstr ""
 
-#: data/de.k_bo.Televido.metainfo.xml.in:77
+#: data/io.github._45054.TelevidoFritz.metainfo.xml.in:77
 msgid "Play all videos with mpv instead of the integrated player"
 msgstr ""
 
-#: data/de.k_bo.Televido.metainfo.xml.in:78
+#: data/io.github._45054.TelevidoFritz.metainfo.xml.in:78
 msgid "Show the keyboard shortcuts in the new shortcuts dialog"
 msgstr ""
 
-#: data/de.k_bo.Televido.metainfo.xml.in:85
+#: data/io.github._45054.TelevidoFritz.metainfo.xml.in:79
+msgid ""
+"Use the app ID io.github._45054.TelevidoFritz instead of upstream's de.k_bo."
+"Televido and take over its settings"
+msgstr ""
+
+#: data/io.github._45054.TelevidoFritz.metainfo.xml.in:86
 msgid "Add an integrated video player based on Clapper and ClapperGTK"
 msgstr ""
 
-#: data/de.k_bo.Televido.metainfo.xml.in:92
+#: data/io.github._45054.TelevidoFritz.metainfo.xml.in:93
 msgid "Allow removing and reordering live channels"
 msgstr ""
 
-#: data/de.k_bo.Televido.metainfo.xml.in:93
+#: data/io.github._45054.TelevidoFritz.metainfo.xml.in:94
 msgid "Add option to copy subtitles URL"
 msgstr ""
 
-#: data/de.k_bo.Televido.metainfo.xml.in:94
+#: data/io.github._45054.TelevidoFritz.metainfo.xml.in:95
 msgid "Use MediathekViewWeb's advanced search syntax"
 msgstr ""
 
-#: data/de.k_bo.Televido.metainfo.xml.in:101
+#: data/io.github._45054.TelevidoFritz.metainfo.xml.in:102
 msgid "Use adaptive dialogs for preferences, player selector and about dialog"
 msgstr ""
 
-#: data/de.k_bo.Televido.metainfo.xml.in:102
+#: data/io.github._45054.TelevidoFritz.metainfo.xml.in:103
 msgid "Added French translation"
 msgstr ""
 
-#: data/de.k_bo.Televido.metainfo.xml.in:109
+#: data/io.github._45054.TelevidoFritz.metainfo.xml.in:110
 msgid "Added support for downloading content using Parabolic"
 msgstr ""
 
-#: data/de.k_bo.Televido.metainfo.xml.in:110
+#: data/io.github._45054.TelevidoFritz.metainfo.xml.in:111
 msgid "Added Dutch translation"
 msgstr ""
 
-#: data/de.k_bo.Televido.metainfo.xml.in:117
+#: data/io.github._45054.TelevidoFritz.metainfo.xml.in:118
 msgid "Added support for mobile devices"
 msgstr ""
 
-#: data/de.k_bo.Televido.metainfo.xml.in:124
+#: data/io.github._45054.TelevidoFritz.metainfo.xml.in:125
 msgid "Added support for custom video players"
 msgstr ""
 
-#: data/de.k_bo.Televido.metainfo.xml.in:125
+#: data/io.github._45054.TelevidoFritz.metainfo.xml.in:126
 msgid "Added support Daikhan as a video player"
 msgstr ""
 
-#: data/de.k_bo.Televido.metainfo.xml.in:131
+#: data/io.github._45054.TelevidoFritz.metainfo.xml.in:132
 msgid "If an error occurs, a graphical error message is shown."
 msgstr ""
 
-#: data/de.k_bo.Televido.metainfo.xml.in:136
+#: data/io.github._45054.TelevidoFritz.metainfo.xml.in:137
 msgid "Initital release"
 msgstr ""
 
-#: src/application.rs:106
+#: src/application.rs:108
 msgid "Failed to load livestream channels"
 msgstr ""
 
-#: src/application.rs:136
+#: src/application.rs:138
 msgid "Failed to connect to the session D-Bus"
 msgstr ""
 
-#: src/application.rs:202
+#: src/application.rs:204
 msgid "Failed to play video stream"
 msgstr ""
 
-#: src/application.rs:248
+#: src/application.rs:250
 msgid "Failed to launch video downloader"
 msgstr ""
 
 #. translators: replace with your names, one per line
-#: src/application.rs:300
+#: src/application.rs:302
 msgid "translator-credits"
 msgstr ""
 

@@ -9,14 +9,14 @@ SPDX-PackageSupplier = "Televido contributors"
 SPDX-PackageDownloadLocation = "https://github.com/45054/televido-fritz"
 
 [[annotations]]
-path = ["data/icons/hicolor/**/apps/**.svg", "data/de.k_bo.Televido.Source.svg"]
+path = ["data/icons/hicolor/**/apps/**.svg", "data/io.github._45054.TelevidoFritz.Source.svg"]
 precedence = "aggregate"
 SPDX-FileCopyrightText = "David Cabot <d-k-bo@mailbox.org>"
 SPDX-License-Identifier = "GPL-3.0-or-later"
 
 [[annotations]]
 path = [
-    "data/de.k_bo.Televido.desktop.in",
+    "data/io.github._45054.TelevidoFritz.desktop.in",
     "data/screenshots/1.png",
     "data/screenshots/2.png",
     "data/screenshots/3.png",
@@ -26,12 +26,20 @@ precedence = "aggregate"
 SPDX-FileCopyrightText = "David Cabot <d-k-bo@mailbox.org>"
 SPDX-License-Identifier = "CC0-1.0"
 
+# added in the fork
+[[annotations]]
+path = "data/io.github._45054.TelevidoFritz.Legacy.gschema.xml"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 Televido contributors"
+SPDX-FileContributor = "Claude (Anthropic)"
+SPDX-License-Identifier = "CC0-1.0"
+
 # changed in the fork
 [[annotations]]
 path = [
-    "build-aux/de.k_bo.Televido.Devel.json",
-    "data/de.k_bo.Televido.gschema.xml",
-    "data/de.k_bo.Televido.metainfo.xml.in",
+    "build-aux/io.github._45054.TelevidoFritz.Devel.json",
+    "data/io.github._45054.TelevidoFritz.gschema.xml",
+    "data/io.github._45054.TelevidoFritz.metainfo.xml.in",
     "Cargo.lock",
 ]
 precedence = "aggregate"

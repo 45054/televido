@@ -10,7 +10,7 @@
 > [!NOTE]
 > ## Dies ist ein Fork
 >
-> Dieses Repository führt [d-k-bo/televido](https://github.com/d-k-bo/televido) fort, das der ursprüngliche Autor eingestellt hat (siehe seinen Hinweis unten). Der Fork ergänzt [FritzTV](#fritztv-fritzbox-cable-dvb-c), die DVB-C-Sender einer FRITZ!Box Cable, spielt alle Videos mit mpv ab und enthält weitere Änderungen. Das Arch-Linux-Paket heißt `televido-fritz-git`.
+> Dieses Repository führt [d-k-bo/televido](https://github.com/d-k-bo/televido) fort, das der ursprüngliche Autor eingestellt hat (siehe seinen Hinweis unten). Der Fork ergänzt [FritzTV](#fritztv-fritzbox-cable-dvb-c), die DVB-C-Sender einer FRITZ!Box Cable, spielt alle Videos mit mpv ab und enthält weitere Änderungen. Das Arch-Linux-Paket heißt `televido-fritz-git` und die App-ID `io.github._45054.TelevidoFritz` (frühere Versionen nutzten die ID `de.k_bo.Televido` des Originals; ihre Einstellungen werden beim ersten Start übernommen).
 >
 > Alle Änderungen in diesem Fork seit Oktober 2026 hat Claude geschrieben, ein KI-Assistent von Anthropic, nach den Anforderungen des Fork-Maintainers. Ihre Copyright-Vermerke nennen „Televido contributors“, und die Dateien nennen Claude als Mitwirkenden (`SPDX-FileContributor`). Das Copyright am ursprünglichen Code liegt weiterhin bei David Cabot. Alles steht weiterhin unter der GPL-3.0-or-later.
 
@@ -51,7 +51,7 @@ Televido kann die DVB-C-Sender einer FRITZ!Box Cable (z. B. 6490, 6591, 6660, 66
   ```
   Firewalls müssen eingehenden UDP-Verkehr von der FRITZ!Box zulassen.
 
-FritzTV startet mpv als normalen Prozess und ist daher für native Installationen gedacht (siehe [Bauen unter Arch Linux](#bauen-unter-arch-linux)). Das Entwicklungs-Flatpak ([`build-aux/de.k_bo.Televido.Devel.json`](build-aux/de.k_bo.Televido.Devel.json)) enthält mpv ebenfalls.
+FritzTV startet mpv als normalen Prozess und ist daher für native Installationen gedacht (siehe [Bauen unter Arch Linux](#bauen-unter-arch-linux)). Das Entwicklungs-Flatpak ([`build-aux/io.github._45054.TelevidoFritz.Devel.json`](build-aux/io.github._45054.TelevidoFritz.Devel.json)) enthält mpv ebenfalls.
 
 ## Bauen unter Arch Linux
 

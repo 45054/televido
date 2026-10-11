@@ -1,7 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <?xml-model href="https://gitlab.gnome.org/GNOME/glib/-/raw/main/gio/gschema.dtd"?>
 <schemalist gettext-domain="televido">
-	<schema id="de.k_bo.Televido" path="/de/k_bo/televido/">
+	<schema id="io.github._45054.TelevidoFritz" path="/io/github/_45054/TelevidoFritz/">
+		<key name="legacy-settings-migrated" type="b">
+			<default>false</default>
+			<summary>Whether the settings of the previous app ID were taken over</summary>
+		</key>
 		<key name="width" type="i">
 			<default>720</default>
 		</key>
