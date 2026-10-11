@@ -15,10 +15,14 @@
 			program only facilitates finding and accessing the shows.
 		</p>
 		<p>
-			Televido plays videos with mpv. Additionally, Televido
-			supports external programs that are installed on the user's system for video playback
-			and download. Currently supported players: GNOME Videos (Totem), Celluloid, Clapper,
-			Daikhan. Currently supported downloaders: Parabolic.
+			Televido can also play the DVB-C channels of a FRITZ!Box Cable in the home network and
+			shows their program guide, which it reads from the cable signal.
+		</p>
+		<p>
+			Televido plays videos with mpv. Additionally, Televido supports external programs that
+			are installed on the user's system for video playback and download. Currently supported
+			players: GNOME Videos (Totem), Celluloid, Clapper, Daikhan. Currently supported
+			downloaders: Parabolic.
 		</p>
 	</description>
 	<developer id="de.k-bo">
@@ -28,15 +32,19 @@
 	<screenshots>
 		<screenshot type="default">
 			<image>https://raw.githubusercontent.com/45054/televido-fritz/main/data/screenshots/1.png</image>
+			<caption>Livestreams with the current shows</caption>
 		</screenshot>
 		<screenshot>
 			<image>https://raw.githubusercontent.com/45054/televido-fritz/main/data/screenshots/2.png</image>
+			<caption>Livestreams in the dark style</caption>
 		</screenshot>
 		<screenshot>
 			<image>https://raw.githubusercontent.com/45054/televido-fritz/main/data/screenshots/3.png</image>
+			<caption>Searching the Mediathek</caption>
 		</screenshot>
 		<screenshot>
 			<image>https://raw.githubusercontent.com/45054/televido-fritz/main/data/screenshots/4.png</image>
+			<caption>Search results with the details of a show</caption>
 		</screenshot>
 	</screenshots>
 	<branding>

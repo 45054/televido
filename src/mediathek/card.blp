@@ -54,7 +54,7 @@ template $TvMediathekCard: Gtk.ListBoxRow {
           ellipsize: end;
 
           styles [
-            "dim-label"
+            "dimmed"
           ]
         }
 
@@ -103,7 +103,7 @@ template $TvMediathekCard: Gtk.ListBoxRow {
 
           Gtk.MenuButton {
             icon-name: "copy-symbolic";
-            tooltip-text: _("Copy video URL");
+            tooltip-text: _("Copy Video URL");
             menu-model: copy_url_menu;
           }
 

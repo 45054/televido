@@ -44,16 +44,12 @@ pub enum ExternalProgramType {
 
 impl ExternalProgram {
     pub async fn open(self, uri: impl Into<String>) -> eyre::Result<()> {
-        let conn = TvApplication::dbus().await;
+        let conn = TvApplication::dbus().await?;
         let uri = uri.into();
 
         tokio(async move {
-            let proxy = ApplicationProxy::new(
-                &conn,
-                self.id.clone(),
-                format!("/{}", self.id.replace('.', "/")),
-            )
-            .await?;
+            let proxy =
+                ApplicationProxy::new(&conn, self.id.clone(), object_path(&self.id)).await?;
 
             proxy.open(&[&uri], Default::default()).await?;
 
@@ -61,6 +57,12 @@ impl ExternalProgram {
         })
         .await
     }
+}
+
+/// The object path of an application implementing `org.freedesktop.Application`,
+/// e.g. `/org/gnome/Totem` for `org.gnome.Totem`.
+fn object_path(id: &str) -> String {
+    format!("/{}", id.replace('.', "/").replace('-', "_"))
 }
 
 impl ExternalProgram {
@@ -74,7 +76,7 @@ impl ExternalProgram {
         name: impl Into<Cow<'static, str>>,
         id: impl Into<Cow<'static, str>>,
     ) -> eyre::Result<Option<Self>> {
-        let conn = TvApplication::dbus().await;
+        let conn = TvApplication::dbus().await?;
         let name = name.into();
         let id = id.into();
 
@@ -96,7 +98,7 @@ impl ExternalProgram {
     }
 
     pub async fn find_known(program_type: ExternalProgramType) -> eyre::Result<Vec<Self>> {
-        let conn = TvApplication::dbus().await;
+        let conn = TvApplication::dbus().await?;
 
         tokio(async move {
             let known_programs = match program_type {
@@ -120,5 +122,16 @@ impl ExternalProgram {
             Ok(programs)
         })
         .await
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::object_path;
+
+    #[test]
+    fn builds_object_paths() {
+        assert_eq!(object_path("org.gnome.Totem"), "/org/gnome/Totem");
+        assert_eq!(object_path("org.example.my-app"), "/org/example/my_app");
     }
 }

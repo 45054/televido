@@ -83,27 +83,77 @@ pub fn format_duration(duration: &Duration) -> String {
     s %= 60;
 
     if h > 0 {
-        format!("{h:2}h{m:02}m{s:02}s")
+        format!("{h}h{m:02}m{s:02}s")
     } else {
         format!("{m:02}m{s:02}s")
     }
 }
 
+/// Shows the error in a toast. Its “Details” button shows the whole chain of
+/// causes.
 pub fn show_error(e: eyre::Report) {
-    if let Some(window) = TvApplication::get()
+    tracing::error!("{e:?}");
+
+    let Some(window) = TvApplication::get()
         .active_window()
         .and_downcast::<TvWindow>()
-    {
-        window.add_toast(
-            adw::Toast::builder()
-                .title(format!(
-                    "{e}. {}",
-                    gettext("See the terminal output for details.")
-                ))
-                .build(),
-        );
+    else {
+        return;
+    };
+
+    let message = e.to_string();
+    let toast = adw::Toast::builder()
+        .title(&message)
+        // the message may contain characters like `&` that aren't valid markup
+        .use_markup(false)
+        .build();
+
+    // the causes, without the backtrace of the debug output
+    let causes: Vec<String> = e.chain().skip(1).map(ToString::to_string).collect();
+    if !causes.is_empty() {
+        toast.set_button_label(Some(&gettext("Details")));
+        toast.connect_button_clicked(glib::clone!(
+            #[weak]
+            window,
+            move |_| show_error_details(&window, &message, &causes.join("\n"))
+        ));
     }
-    tracing::error!("{e:?}");
+    window.add_toast(toast);
+}
+
+fn show_error_details(window: &TvWindow, message: &str, details: &str) {
+    let label = gtk::Label::builder()
+        .label(details)
+        .selectable(true)
+        // a focused label selects all of its text, it is copied with the
+        // “Copy” button instead
+        .focusable(false)
+        .wrap(true)
+        .wrap_mode(gtk::pango::WrapMode::WordChar)
+        .xalign(0.0)
+        .valign(gtk::Align::Start)
+        .css_classes(["monospace"])
+        .build();
+    let scrolled_window = gtk::ScrolledWindow::builder()
+        .child(&label)
+        .hscrollbar_policy(gtk::PolicyType::Never)
+        .propagate_natural_height(true)
+        .max_content_height(320)
+        .build();
+
+    let dialog = adw::AlertDialog::builder()
+        .heading(message)
+        .extra_child(&scrolled_window)
+        .build();
+    dialog.add_responses(&[("copy", &gettext("_Copy")), ("close", &gettext("_Close"))]);
+    dialog.set_default_response(Some("close"));
+    dialog.set_close_response("close");
+
+    let text = format!("{message}\n{details}");
+    dialog.connect_response(Some("copy"), move |dialog, _| {
+        dialog.clipboard().set_text(&text);
+    });
+    dialog.present(Some(window));
 }
 
 pub trait ListStoreExtManual {
@@ -139,9 +189,22 @@ impl ListStoreExtManual for gio::ListStore {
 mod async_resource {
     use super::*;
 
-    #[derive(Clone, Default)]
+    #[derive(Clone)]
     pub struct AsyncResource<T: Clone + Debug> {
         inner: Rc<AsyncResourceInner<T>>,
+    }
+
+    // not derived, which would require `T: Default`
+    impl<T: Clone + Debug> Default for AsyncResource<T> {
+        fn default() -> Self {
+            Self {
+                inner: Rc::new(AsyncResourceInner {
+                    data: RefCell::default(),
+                    load_fn: OnceCell::default(),
+                    wakers: RefCell::default(),
+                }),
+            }
+        }
     }
 
     impl<T: Clone + Debug> std::fmt::Debug for AsyncResource<T> {
@@ -150,7 +213,6 @@ mod async_resource {
         }
     }
 
-    #[derive(Default)]
     struct AsyncResourceInner<T: Clone + Debug> {
         data: RefCell<Option<T>>,
         load_fn: OnceCell<LoadFn<T>>,
@@ -175,9 +237,11 @@ mod async_resource {
         pub fn load(&self) {
             match self.inner.load_fn.get().cloned() {
                 Some(load_fn) => {
+                    // cleared right away, so that awaiting the resource
+                    // after `load()` never returns the previous data
+                    *self.inner.data.borrow_mut() = None;
                     let inner = self.inner.clone();
                     spawn(async move {
-                        *inner.data.borrow_mut() = None;
                         let data = load_fn().await;
                         *inner.data.borrow_mut() = Some(data);
                         for waker in inner.wakers.borrow_mut().drain(..) {

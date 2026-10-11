@@ -36,12 +36,50 @@ mod imp {
         }
         #[template_callback]
         fn restore_defaults(&self, #[rest] _: &[glib::Value]) {
+            let previous = self.arguments();
             self.settings.reset(&self.key.borrow());
             self.load();
+            self.offer_undo(&gettext("Defaults restored"), previous);
         }
     }
 
     impl TvMpvArgumentsPage {
+        fn arguments(&self) -> Vec<String> {
+            self.settings
+                .strv(&self.key.borrow())
+                .iter()
+                .map(ToString::to_string)
+                .collect()
+        }
+
+        /// Shows a toast whose button brings back the `previous` arguments.
+        fn offer_undo(&self, title: &str, previous: Vec<String>) {
+            let Some(dialog) = self.obj().ancestor(adw::PreferencesDialog::static_type()) else {
+                return;
+            };
+            let toast = adw::Toast::builder()
+                .title(title)
+                .button_label(gettext("_Undo"))
+                .build();
+            toast.connect_button_clicked(glib::clone!(
+                #[weak(rename_to = slf)]
+                self,
+                move |_| {
+                    if let Err(e) = slf
+                        .settings
+                        .set_strv(&slf.key.borrow(), previous.as_slice())
+                    {
+                        tracing::error!("failed to restore the mpv arguments: {e}");
+                    }
+                    slf.load();
+                }
+            ));
+            dialog
+                .downcast_ref::<adw::PreferencesDialog>()
+                .expect("is a PreferencesDialog")
+                .add_toast(toast);
+        }
+
         fn load(&self) {
             self.arguments_list.remove_all();
             for argument in self.settings.strv(&self.key.borrow()) {
@@ -89,8 +127,10 @@ mod imp {
                 #[weak]
                 row,
                 move |_| {
+                    let previous = slf.arguments();
                     slf.arguments_list.remove(&row);
                     slf.save();
+                    slf.offer_undo(&gettext("Argument removed"), previous);
                 }
             ));
             row.add_suffix(&remove_button);

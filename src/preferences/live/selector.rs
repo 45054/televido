@@ -18,7 +18,7 @@ use crate::{
 use super::selector_row::TvLiveChannelSelectorRow;
 
 mod imp {
-    use crate::utils::{spawn, ListStoreExtManual};
+    use crate::utils::{show_error, spawn, ListStoreExtManual};
 
     use super::*;
 
@@ -41,7 +41,13 @@ mod imp {
 
     impl TvLiveChannelSelector {
         async fn load(&self) {
-            let live_channels = TvApplication::get().live_channels().await;
+            let live_channels = match TvApplication::get().live_channels().await {
+                Ok(live_channels) => live_channels,
+                Err(e) => {
+                    show_error(eyre::eyre!("{e:#}"));
+                    return;
+                }
+            };
             let mut visible_channels = self.settings.live_channels();
 
             self.channel_rows
@@ -98,6 +104,11 @@ mod imp {
                             }
                         }
                     ));
+                    row.connect_move_requested(glib::clone!(
+                        #[weak(rename_to = slf)]
+                        self,
+                        move |row, offset| slf.move_row(row, offset)
+                    ));
                     (id.clone(), row)
                 }));
 
@@ -118,6 +129,23 @@ mod imp {
                     row.set_visible(false);
                 }
             }
+        }
+        /// Moves a visible row up or down by `offset` positions.
+        fn move_row(&self, row: &TvLiveChannelSelectorRow, offset: i32) {
+            let Some(position) = self.visible_channels.find(row) else {
+                return;
+            };
+            let Some(new_position) = position
+                .checked_add_signed(offset)
+                .filter(|&new_position| new_position < self.visible_channels.n_items())
+            else {
+                return;
+            };
+
+            self.visible_channels.remove(position);
+            self.visible_channels.insert(new_position, row);
+            // the row lost the focus when it was removed
+            row.grab_focus();
         }
         fn remove_row(&self, row: &TvLiveChannelSelectorRow) {
             if let Some(pos) = self.visible_channels.find(row) {
@@ -195,12 +223,18 @@ mod imp {
             let settings = self.settings.clone();
             self.visible_channels
                 .connect_items_changed(move |visible_channels, _, _, _| {
-                    let channels = visible_channels
+                    let rows = visible_channels
                         .iter::<TvLiveChannelSelectorRow>()
                         .map(|res| res.unwrap())
-                        .map(|row| row.channel_id())
                         .collect::<Vec<_>>();
-                    settings.set_live_channels(channels);
+
+                    // the first row can't move up and the last one down
+                    for (position, row) in rows.iter().enumerate() {
+                        row.action_set_enabled("row.move-up", position > 0);
+                        row.action_set_enabled("row.move-down", position + 1 < rows.len());
+                    }
+
+                    settings.set_live_channels(rows.iter().map(|row| row.channel_id()).collect());
                 });
         }
     }

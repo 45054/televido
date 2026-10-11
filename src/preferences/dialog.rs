@@ -59,6 +59,7 @@ mod imp {
 
         #[property(get)]
         settings: TvSettings,
+        settings_handlers: RefCell<Vec<glib::SignalHandlerId>>,
     }
 
     #[gtk::template_callbacks]
@@ -219,45 +220,50 @@ mod imp {
                 .set_text(&self.settings.fritzbox_address());
 
             self.update_mpv_arguments_summary();
-            self.settings.connect_mpv_arguments_changed(glib::clone!(
-                #[weak(rename_to = slf)]
-                self,
-                move |_| slf.update_mpv_arguments_summary()
-            ));
             self.update_mpv_arguments_fritzbox_summary();
-            self.settings
-                .connect_mpv_arguments_fritzbox_changed(glib::clone!(
+            self.update_video_player_display_name();
+            self.update_video_downloader_display_name();
+
+            let settings = &self.settings;
+            self.settings_handlers.replace(vec![
+                settings.connect_mpv_arguments_changed(glib::clone!(
+                    #[weak(rename_to = slf)]
+                    self,
+                    move |_| slf.update_mpv_arguments_summary()
+                )),
+                settings.connect_mpv_arguments_fritzbox_changed(glib::clone!(
                     #[weak(rename_to = slf)]
                     self,
                     move |_| slf.update_mpv_arguments_fritzbox_summary()
-                ));
-
-            self.update_video_player_display_name();
-            self.settings
-                .connect_video_player_name_changed(glib::clone!(
+                )),
+                settings.connect_video_player_name_changed(glib::clone!(
                     #[weak(rename_to = slf)]
                     self,
                     move |_| slf.update_video_player_display_name()
-                ));
-            self.settings.connect_video_player_id_changed(glib::clone!(
-                #[weak(rename_to = slf)]
-                self,
-                move |_| slf.update_video_player_display_name()
-            ));
+                )),
+                settings.connect_video_player_id_changed(glib::clone!(
+                    #[weak(rename_to = slf)]
+                    self,
+                    move |_| slf.update_video_player_display_name()
+                )),
+                settings.connect_video_downloader_name_changed(glib::clone!(
+                    #[weak(rename_to = slf)]
+                    self,
+                    move |_| slf.update_video_downloader_display_name()
+                )),
+                settings.connect_video_downloader_id_changed(glib::clone!(
+                    #[weak(rename_to = slf)]
+                    self,
+                    move |_| slf.update_video_downloader_display_name()
+                )),
+            ]);
+        }
 
-            self.update_video_downloader_display_name();
-            self.settings
-                .connect_video_downloader_name_changed(glib::clone!(
-                    #[weak(rename_to = slf)]
-                    self,
-                    move |_| slf.update_video_downloader_display_name()
-                ));
-            self.settings
-                .connect_video_downloader_id_changed(glib::clone!(
-                    #[weak(rename_to = slf)]
-                    self,
-                    move |_| slf.update_video_downloader_display_name()
-                ));
+        fn dispose(&self) {
+            // the settings object outlives the dialog
+            for handler in self.settings_handlers.take() {
+                self.settings.disconnect(handler);
+            }
         }
     }
     impl WidgetImpl for TvPreferencesDialog {}

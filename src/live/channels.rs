@@ -12,7 +12,7 @@ use crate::utils::format_timestamp_time;
 /// Where a channel comes from and how it is played.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum ChannelKind {
-    /// A livestream from the Zapp API, played with the integrated player.
+    /// A livestream from the Zapp API, played with mpv or an external player.
     #[default]
     Zapp,
     /// A DVB-C channel of a FRITZ!Box, played with mpv.

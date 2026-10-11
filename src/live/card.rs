@@ -3,19 +3,12 @@
 // SPDX-FileContributor: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-use std::{
-    cell::{Cell, RefCell},
-    time::Duration,
-};
+use std::cell::{Cell, RefCell};
 
 use adw::{glib, gtk, prelude::*, subclass::prelude::*};
 
 use crate::{
-    application::VideoInfo,
-    channel_icons::load_channel_icon,
-    mpv,
-    utils::{show_error, spawn, tokio},
-    TvApplication,
+    application::VideoInfo, channel_icons::load_channel_icon, mpv, utils::show_error, TvApplication,
 };
 
 use super::channels::{ChannelKind, ChannelObject};
@@ -56,6 +49,8 @@ mod imp {
             let Some(channel) = self.obj().channel() else {
                 return;
             };
+            self.icon
+                .update_property(&[gtk::accessible::Property::Label(&channel.name())]);
 
             match channel.kind() {
                 ChannelKind::Zapp => load_channel_icon(Some(&channel.id()), &self.icon, 64),
@@ -115,11 +110,11 @@ mod imp {
         fn set_fritz_icon(&self, channel: &ChannelObject) {
             match channel.logo() {
                 Some(logo) => {
-                    self.icon.remove_css_class("dim-label");
+                    self.icon.remove_css_class("dimmed");
                     self.icon.set_paintable(Some(&logo));
                 }
                 None => {
-                    self.icon.add_css_class("dim-label");
+                    self.icon.add_css_class("dimmed");
                     self.icon.set_icon_name(Some(match channel.kind() {
                         ChannelKind::FritzRadio => "audio-x-generic-symbolic",
                         _ => "tv-symbolic",
@@ -177,6 +172,13 @@ mod imp {
                 }
             });
 
+            // tell assistive technologies that the row expands
+            let update_expanded = |slf: &super::TvLiveCard| {
+                slf.update_state(&[gtk::accessible::State::Expanded(Some(slf.expanded()))])
+            };
+            update_expanded(&self.obj());
+            self.obj().connect_expanded_notify(update_expanded);
+
             self.title
                 .connect_label_notify(|title| title.set_visible(!title.label().is_empty()));
 
@@ -196,14 +198,19 @@ mod imp {
             });
 
             // the progress advances every 10 seconds
-            let slf = self.downgrade();
-            spawn(async move {
-                loop {
-                    let Some(slf) = slf.upgrade() else { break };
-                    slf.update_progress();
-                    tokio(async { tokio::time::sleep(Duration::from_secs(10)).await }).await;
-                }
-            });
+            glib::timeout_add_seconds_local(
+                10,
+                glib::clone!(
+                    #[weak(rename_to = slf)]
+                    self,
+                    #[upgrade_or]
+                    glib::ControlFlow::Break,
+                    move || {
+                        slf.update_progress();
+                        glib::ControlFlow::Continue
+                    }
+                ),
+            );
         }
     }
     impl WidgetImpl for TvLiveCard {}

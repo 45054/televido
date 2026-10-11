@@ -45,6 +45,10 @@ mod imp {
         nothing_found_view: TemplateChild<adw::StatusPage>,
         #[template_child]
         results_view: TemplateChild<gtk::ScrolledWindow>,
+        #[template_child]
+        loading_view: TemplateChild<adw::Spinner>,
+        #[template_child]
+        error_view: TemplateChild<adw::StatusPage>,
 
         #[property(get, set)]
         compact: Cell<bool>,
@@ -68,6 +72,8 @@ mod imp {
 
         pub(super) client: OnceCell<Arc<Mediathek>>,
         pub(super) shows_model: OnceCell<gio::ListStore>,
+        /// Incremented on every new search to discard outdated results.
+        pub(super) generation: Cell<u64>,
     }
     impl TvMediathekView {
         pub(super) fn shows_model(&self) -> gio::ListStore {
@@ -77,6 +83,30 @@ mod imp {
         }
         pub(super) fn show_status_page(&self) {
             self.stack.set_visible_child(&*self.status_page)
+        }
+        /// Shows the results, or a hint if there are none.
+        pub(super) fn show_results(&self) {
+            let n_items = self.shows_model().n_items();
+            if n_items == 0 {
+                self.stack.set_visible_child(&*self.nothing_found_view);
+            } else {
+                self.stack.set_visible_child(&*self.results_view);
+            }
+            self.obj()
+                .set_more_available(u64::from(n_items) < self.total_results.get());
+        }
+        /// Shows a spinner, unless earlier results are shown, which stay
+        /// visible until the new ones arrive.
+        pub(super) fn show_loading(&self) {
+            if self.stack.visible_child().as_ref() != Some(self.results_view.upcast_ref()) {
+                self.stack.set_visible_child(&*self.loading_view);
+            }
+        }
+        pub(super) fn show_error_page(&self, e: &eyre::Report) {
+            tracing::error!("{e:?}");
+            self.error_view
+                .set_description(Some(&glib::markup_escape_text(&format!("{e:#}"))));
+            self.stack.set_visible_child(&*self.error_view);
         }
     }
 
@@ -167,20 +197,6 @@ mod imp {
             slf.connect_sort_by_notify(load);
             slf.connect_sort_order_notify(load);
 
-            self.shows_model().connect_items_changed(glib::clone!(
-                #[weak(rename_to = slf)]
-                self,
-                move |results, _, _, _| {
-                    if results.n_items() == 0 {
-                        slf.stack.set_visible_child(&*slf.nothing_found_view);
-                    } else {
-                        slf.stack.set_visible_child(&*slf.results_view);
-                    }
-                    slf.obj()
-                        .set_more_available((results.n_items() as u64) < slf.total_results.get());
-                }
-            ));
-
             slf.connect_map(|slf| {
                 slf.imp().search_entry.grab_focus();
             });
@@ -242,6 +258,10 @@ impl TvMediathekView {
         }
     }
     async fn load(&self) {
+        let imp = self.imp();
+        let generation = imp.generation.get() + 1;
+        imp.generation.set(generation);
+
         let QueryProperties {
             query_string,
             search_everywhere,
@@ -251,15 +271,14 @@ impl TvMediathekView {
         } = self.query_props();
 
         if query_string.is_empty() {
-            self.imp().show_status_page();
+            imp.show_status_page();
             return;
         }
 
+        imp.show_loading();
         let client = self.client();
 
-        let mut shows_model = self.imp().shows_model();
-
-        match tokio(async move {
+        let result = tokio(async move {
             client
                 .query_string(&query_string, search_everywhere)
                 .include_future(include_future)
@@ -270,18 +289,31 @@ impl TvMediathekView {
                 .await
                 .wrap_err_with(|| gettext("Failed to query the MediathekViewWeb API"))
         })
-        .await
-        {
-            Ok(result) => {
-                shows_model.remove_all();
-                shows_model.extend(result.results.into_iter().map(ShowObject::new));
+        .await;
 
+        // a newer search has started in the meantime
+        if imp.generation.get() != generation {
+            return;
+        }
+
+        match result {
+            Ok(result) => {
+                // must be known before the results change
                 self.set_total_results(result.query_info.total_results);
+
+                let shows: Vec<ShowObject> =
+                    result.results.into_iter().map(ShowObject::new).collect();
+                let shows_model = imp.shows_model();
+                shows_model.splice(0, shows_model.n_items(), &shows);
+                imp.show_results();
             }
-            Err(e) => show_error(e),
+            Err(e) => imp.show_error_page(&e),
         }
     }
     async fn load_more(&self) {
+        let imp = self.imp();
+        let generation = imp.generation.get();
+
         let QueryProperties {
             query_string,
             search_everywhere,
@@ -291,16 +323,17 @@ impl TvMediathekView {
         } = self.query_props();
 
         if query_string.is_empty() {
-            self.imp().show_status_page();
+            imp.show_status_page();
             return;
         }
 
-        let mut shows_model = self.imp().shows_model();
+        let mut shows_model = imp.shows_model();
         let offset = shows_model.n_items();
 
         let client = self.client();
 
-        match tokio(async move {
+        self.action_set_enabled("mediathek.load-more", false);
+        let result = tokio(async move {
             client
                 .query_string(&query_string, search_everywhere)
                 .include_future(include_future)
@@ -312,12 +345,19 @@ impl TvMediathekView {
                 .await
                 .wrap_err_with(|| gettext("Failed to query the MediathekViewWeb API"))
         })
-        .await
-        {
-            Ok(result) => {
-                shows_model.extend(result.results.into_iter().map(ShowObject::new));
+        .await;
+        self.action_set_enabled("mediathek.load-more", true);
 
+        // the results belong to a previous search
+        if imp.generation.get() != generation {
+            return;
+        }
+
+        match result {
+            Ok(result) => {
                 self.set_total_results(result.query_info.total_results);
+                shows_model.extend(result.results.into_iter().map(ShowObject::new));
+                imp.show_results();
             }
             Err(e) => show_error(e),
         }

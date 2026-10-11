@@ -4,7 +4,7 @@ using Gtk 4.0;
 using Adw 1;
 
 template $TvLiveChannelSelector: Adw.NavigationPage {
-  title: _("Select and reorder channels");
+  title: _("Select and Reorder Channels");
 
   Adw.ToolbarView {
     [top]
@@ -12,11 +12,12 @@ template $TvLiveChannelSelector: Adw.NavigationPage {
 
     Adw.PreferencesPage {
       Adw.PreferencesGroup {
-        title: _("Visible channels");
+        title: _("Visible Channels");
         name: "visible-channels";
 
         header-suffix: Gtk.MenuButton {
           icon-name: "view-more-symbolic";
+          tooltip-text: _("Sort");
           menu-model: sort_menu;
 
           styles [
@@ -32,7 +33,7 @@ template $TvLiveChannelSelector: Adw.NavigationPage {
       }
 
       Adw.PreferencesGroup {
-        title: _("Hidden channels");
+        title: _("Hidden Channels");
         name: "hidden-channels";
 
         Gtk.ListBox hidden_channel_rows {
@@ -48,12 +49,12 @@ template $TvLiveChannelSelector: Adw.NavigationPage {
 menu sort_menu {
   section {
     item {
-      label: _("Sort alphabetically");
+      label: _("Sort Alphabetically");
       action: "live-channel-selector.sort-alphabetically";
     }
 
     item {
-      label: _("Sort using default order");
+      label: _("Sort by Default Order");
       action: "live-channel-selector.sort-default-order";
     }
   }

@@ -3,21 +3,24 @@
 // SPDX-FileContributor: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-use std::cell::OnceCell;
+use std::cell::{Cell, OnceCell};
 
 use adw::{gio, glib, gtk, prelude::*, subclass::prelude::*};
-use eyre::WrapErr;
+use futures_util::StreamExt;
 use gettextrs::gettext;
 use smart_default::SmartDefault;
 
 use crate::{
     application::TvApplication,
     settings::TvSettings,
-    utils::{show_error, spawn, tokio},
+    utils::{spawn, tokio},
     zapp::{ChannelId, ChannelInfo, Show, ShowsResult},
 };
 
 use super::{card::TvLiveCard, channels::ChannelObject, filter::channel_filter};
+
+/// The number of programme requests that run at the same time.
+const MAX_PARALLEL_REQUESTS: usize = 6;
 
 mod imp {
     use super::*;
@@ -28,15 +31,17 @@ mod imp {
         #[template_child]
         stack: TemplateChild<gtk::Stack>,
         #[template_child]
-        spinner: TemplateChild<gtk::Spinner>,
-        #[template_child]
         search_entry: TemplateChild<gtk::SearchEntry>,
         #[template_child]
         results_stack: TemplateChild<gtk::Stack>,
         #[template_child]
         channels_list: TemplateChild<gtk::ListBox>,
+        #[template_child]
+        error_page: TemplateChild<adw::StatusPage>,
 
         filter: OnceCell<gtk::CustomFilter>,
+        /// Incremented on every reload to discard outdated results.
+        generation: Cell<u64>,
     }
 
     impl TvLiveView {
@@ -45,7 +50,10 @@ mod imp {
             let settings = TvSettings::get();
             let visible_channels = settings.live_channels();
 
-            let live_channels = TvApplication::get().live_channels().await;
+            let live_channels = TvApplication::get()
+                .live_channels()
+                .await
+                .map_err(|e| eyre::eyre!("{e:#}"))?;
 
             let live_channels: Vec<(ChannelId, ChannelInfo)> = if visible_channels.is_empty() {
                 live_channels
@@ -62,34 +70,45 @@ mod imp {
                     .collect()
             };
 
-            let load_channels = tokio(async move {
-                let mut channels: Vec<(ChannelId, ChannelInfo, Option<Vec<Show>>)> =
-                    Vec::with_capacity(live_channels.len());
+            if live_channels.is_empty() {
+                eyre::bail!(gettext("No livestream channels available"));
+            }
 
-                for (channel_id, channel_info) in live_channels.iter() {
-                    match client.shows(channel_id).await.wrap_err_with(|| {
-                        eyre::Report::msg(
-                            // translators: `{}` is replaced by the channel_id, e.g. `das_erste`
-                            gettext("Failed load shows for channel “{}”")
-                                .replace("{}", channel_id.as_ref()),
-                        )
-                    })? {
-                        ShowsResult::Shows(shows) => {
-                            channels.push((channel_id.clone(), channel_info.clone(), Some(shows)))
+            // the programme of a channel is optional, a failing request only
+            // leaves its card without one
+            let channels = tokio(async move {
+                let channel_ids: Vec<ChannelId> =
+                    live_channels.iter().map(|(id, _)| id.clone()).collect();
+                let shows: Vec<Option<Vec<Show>>> = futures_util::stream::iter(channel_ids)
+                    .map(|channel_id| {
+                        let client = client.clone();
+                        async move {
+                            match client.shows(&channel_id).await {
+                                Ok(ShowsResult::Shows(shows)) => Some(shows),
+                                Ok(ShowsResult::Error(e)) => {
+                                    tracing::debug!("no shows for channel “{channel_id}”: {e}");
+                                    None
+                                }
+                                Err(e) => {
+                                    tracing::warn!(
+                                        "failed to load the shows of channel “{channel_id}”: {e:?}"
+                                    );
+                                    None
+                                }
+                            }
                         }
-                        ShowsResult::Error(_) => {
-                            channels.push((channel_id.clone(), channel_info.clone(), None))
-                        }
-                    }
-                }
+                    })
+                    .buffered(MAX_PARALLEL_REQUESTS)
+                    .collect()
+                    .await;
 
-                Ok::<_, eyre::Report>(channels)
-            });
+                live_channels.into_iter().zip(shows).collect::<Vec<_>>()
+            })
+            .await;
 
-            let channel_objects = load_channels
-                .await?
+            let channel_objects = channels
                 .into_iter()
-                .map(|(channel_id, channel_info, shows)| {
+                .map(|((channel_id, channel_info), shows)| {
                     let channel = ChannelObject::new(
                         channel_id.as_ref(),
                         &channel_info.name,
@@ -119,13 +138,18 @@ mod imp {
             Ok(channel_objects)
         }
         pub(super) async fn reload(&self) {
-            self.spinner.set_spinning(true);
+            let generation = self.generation.get() + 1;
+            self.generation.set(generation);
             self.stack.set_visible_child_name("spinner");
 
-            match self.load_channels().await {
+            let result = self.load_channels().await;
+            // a newer reload has started in the meantime
+            if self.generation.get() != generation {
+                return;
+            }
+
+            match result {
                 Ok(channels) => {
-                    // the list is empty if the channels couldn't be loaded
-                    self.search_entry.set_visible(channels.n_items() > 0);
                     let channels =
                         gtk::FilterListModel::new(Some(channels), self.filter.get().cloned());
                     channels.connect_items_changed(glib::clone!(
@@ -142,9 +166,13 @@ mod imp {
                             .upcast()
                     });
                     self.stack.set_visible_child_name("channels");
-                    self.spinner.set_spinning(false);
                 }
-                Err(e) => show_error(e.wrap_err(gettext("Failed to load livestream channels"))),
+                Err(e) => {
+                    tracing::error!("{e:?}");
+                    self.error_page
+                        .set_description(Some(&glib::markup_escape_text(&format!("{e:#}"))));
+                    self.stack.set_visible_child_name("error");
+                }
             }
         }
 
@@ -220,7 +248,9 @@ glib::wrapper! {
 }
 
 impl TvLiveView {
+    /// Reloads the channel list and the programme, e.g. after an error.
     pub fn reload(&self) {
+        TvApplication::get().live_channels().load();
         let slf = self.imp().to_owned();
         spawn(async move { slf.reload().await });
     }

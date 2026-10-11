@@ -3,7 +3,7 @@
 // SPDX-FileContributor: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-use std::{cell::OnceCell, fmt::Display, str::FromStr};
+use std::cell::OnceCell;
 
 use adw::{gio, glib, prelude::*};
 use gsettings_macro::gen_settings;
@@ -66,29 +66,11 @@ pub enum VideoQuality {
 }
 impl VideoQuality {
     pub fn default_playback() -> Self {
-        TvSettings::get()
-            .default_playback_quality()
-            .parse()
-            .unwrap()
-    }
-}
-impl FromStr for VideoQuality {
-    type Err = eyre::Report;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "high" => Ok(VideoQuality::High),
-            "medium" => Ok(VideoQuality::Medium),
-            "low" => Ok(VideoQuality::Low),
-            _ => Err(eyre::eyre!("invalid value for video quality: \"{s}\"")),
+        // the schema only allows these values
+        match TvSettings::get().default_playback_quality() {
+            DefaultPlaybackQuality::High => VideoQuality::High,
+            DefaultPlaybackQuality::Medium => VideoQuality::Medium,
+            DefaultPlaybackQuality::Low => VideoQuality::Low,
         }
-    }
-}
-impl Display for VideoQuality {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(match self {
-            VideoQuality::High => "high",
-            VideoQuality::Medium => "medium",
-            VideoQuality::Low => "low",
-        })
     }
 }

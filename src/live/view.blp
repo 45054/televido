@@ -12,9 +12,11 @@ template $TvLiveView: Adw.Bin {
     Gtk.StackPage {
       name: "spinner";
 
-      child: Gtk.Spinner spinner {
+      child: Adw.Spinner spinner {
         halign: center;
-        spinning: true;
+        valign: center;
+        width-request: 32;
+        height-request: 32;
       };
     }
 
@@ -68,6 +70,26 @@ template $TvLiveView: Adw.Bin {
             };
           }
         }
+      };
+    }
+
+    Gtk.StackPage {
+      name: "error";
+
+      child: Adw.StatusPage error_page {
+        icon-name: "error-symbolic";
+        title: _("Could Not Load Channels");
+
+        child: Gtk.Button {
+          label: _("Retry");
+          halign: center;
+          action-name: "window.reload";
+
+          styles [
+            "pill",
+            "suggested-action"
+          ]
+        };
       };
     }
   }
