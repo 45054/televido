@@ -3,9 +3,21 @@
 
 use std::cell::{Cell, RefCell};
 
-use adw::{glib, prelude::*, subclass::prelude::*};
+use adw::{gdk, glib, prelude::*, subclass::prelude::*};
 
 use crate::utils::format_timestamp_time;
+
+/// Where a channel comes from and how it is played.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum ChannelKind {
+    /// A livestream from the Zapp API, played with the integrated player.
+    #[default]
+    Zapp,
+    /// A DVB-C channel of a FRITZ!Box, played with mpv.
+    Fritz,
+    /// A DVB-C radio channel of a FRITZ!Box, played with mpv.
+    FritzRadio,
+}
 
 mod imp {
     use super::*;
@@ -33,6 +45,14 @@ mod imp {
         timespan: RefCell<Option<String>>,
         #[property(get, construct_only)]
         stream_url: RefCell<String>,
+        /// The channel logo, if it isn't one of the bundled icons.
+        #[property(get, set, nullable)]
+        logo: RefCell<Option<gdk::Paintable>>,
+        /// The event after the current one, e.g. “Next: 21:45 Tagesthemen”.
+        #[property(get, set, nullable)]
+        next: RefCell<Option<String>>,
+
+        pub(super) kind: Cell<ChannelKind>,
     }
 
     impl ChannelObject {
@@ -106,5 +126,16 @@ impl ChannelObject {
             .property("name", name)
             .property("stream-url", stream_url)
             .build()
+    }
+
+    /// Creates a channel of a FRITZ!Box. Its `stream_url` is played with mpv.
+    pub fn new_fritz(name: &str, stream_url: &str, kind: ChannelKind) -> Self {
+        let slf = Self::new("", name, stream_url);
+        slf.imp().kind.set(kind);
+        slf
+    }
+
+    pub fn kind(&self) -> ChannelKind {
+        self.imp().kind.get()
     }
 }

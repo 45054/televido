@@ -6,19 +6,21 @@ use std::{
     rc::Rc,
 };
 
-use adw::{gdk, glib, gtk, prelude::*, subclass::prelude::*};
+use adw::{gdk, gio, glib, gtk, prelude::*, subclass::prelude::*};
 use gettextrs::{gettext, ngettext};
 
 use crate::{
     application::TvApplication,
-    mpv,
+    live::{ChannelKind, ChannelObject, TvLiveCard},
     settings::TvSettings,
-    utils::{show_error, spawn, tokio},
+    utils::{format_timestamp_time, spawn, tokio},
 };
 
-use super::{ChannelList, FritzChannel, FritzChannels, LogoIndex, LogoSources};
+use super::{unix_now, ChannelList, FritzChannel, FritzChannels, LogoIndex, LogoSources, NowNext};
 
-const LOGO_SIZE: i32 = 48;
+/// How often the programme information of the cards is updated, so that
+/// the next show appears when the current one has ended.
+const EPG_REFRESH_SECONDS: u32 = 30;
 
 mod imp {
     use super::*;
@@ -52,12 +54,22 @@ mod imp {
         lists: RefCell<Vec<ChannelList>>,
         /// Incremented on every reload to discard outdated results.
         generation: Cell<u64>,
+
+        /// The cards' channels of the last reload.
+        channel_objects: RefCell<Vec<ChannelObject>>,
+        /// The TV channels of the last reload, which have programme
+        /// information.
+        epg_channels: RefCell<Vec<FritzChannel>>,
+        /// Incremented whenever the programme guide is (re)started or stopped.
+        epg_generation: Cell<u64>,
     }
 
     impl TvFritzView {
         pub(super) async fn reload(&self) {
             let settings = TvSettings::get();
             if !settings.fritztv_enabled() {
+                self.epg_channels.take();
+                self.update_epg();
                 return;
             }
 
@@ -77,14 +89,29 @@ mod imp {
 
             match result {
                 Ok(channels) if channels.is_empty() => {
+                    self.channel_objects.take();
+                    self.epg_channels.take();
+                    self.update_epg();
                     self.stack.set_visible_child_name("empty");
                 }
                 Ok(channels) => {
                     let logos = self.show_channels(&channels);
+                    // radio channels hardly ever have programme information
+                    self.epg_channels.replace(
+                        [&channels.tv, &channels.hd, &channels.sd]
+                            .into_iter()
+                            .flatten()
+                            .cloned()
+                            .collect(),
+                    );
+                    self.update_epg();
                     self.stack.set_visible_child_name("channels");
                     self.load_logos(logos).await;
                 }
                 Err(e) => {
+                    self.channel_objects.take();
+                    self.epg_channels.take();
+                    self.update_epg();
                     tracing::error!("{e:?}");
                     self.error_page
                         .set_description(Some(&glib::markup_escape_text(&format!("{e:#}"))));
@@ -93,12 +120,14 @@ mod imp {
             }
         }
 
-        /// Fills the channel lists and returns the logo placeholders by channel.
+        /// Fills the channel lists and returns the channels by list and name
+        /// to load their logos.
         fn show_channels(
             &self,
             channels: &FritzChannels,
-        ) -> Vec<(ChannelList, String, gtk::Image)> {
+        ) -> Vec<(ChannelList, String, ChannelObject)> {
             let mut logos = Vec::new();
+            let mut objects = Vec::new();
 
             for (list, group, list_box) in [
                 (ChannelList::Tv, &self.tv_group, &self.tv_list),
@@ -108,24 +137,93 @@ mod imp {
             ] {
                 let channels = channels.get(list);
 
-                list_box.remove_all();
                 group.set_visible(!channels.is_empty());
                 group.set_description(Some(
                     &ngettext("{} channel", "{} channels", channels.len() as u32)
                         .replace("{}", &channels.len().to_string()),
                 ));
 
+                let kind = match list {
+                    ChannelList::Radio => ChannelKind::FritzRadio,
+                    ChannelList::Tv | ChannelList::Hd | ChannelList::Sd => ChannelKind::Fritz,
+                };
+                let store = gio::ListStore::new::<ChannelObject>();
                 for channel in channels {
-                    let (row, logo) = channel_row(channel, list);
-                    list_box.append(&row);
-                    logos.push((list, channel.name.clone(), logo));
+                    let object = ChannelObject::new_fritz(&channel.name, &channel.url, kind);
+                    store.append(&object);
+                    logos.push((list, channel.name.clone(), object.clone()));
+                    objects.push(object);
                 }
+                list_box.bind_model(Some(&store), |channel| {
+                    glib::Object::builder::<TvLiveCard>()
+                        .property("channel", channel)
+                        .build()
+                        .upcast()
+                });
             }
+
+            self.channel_objects.replace(objects);
+            self.refresh_epg();
 
             logos
         }
 
-        async fn load_logos(&self, logos: Vec<(ChannelList, String, gtk::Image)>) {
+        /// (Re)starts reading the programme guide of the channels of the
+        /// last reload, or stops it if it is disabled.
+        fn update_epg(&self) {
+            let generation = self.epg_generation.get() + 1;
+            self.epg_generation.set(generation);
+
+            let fritzbox = TvApplication::get().fritzbox();
+            fritzbox.epg().stop();
+
+            let channels = self.epg_channels.borrow().clone();
+            if channels.is_empty() || !TvSettings::get().fritztv_epg() {
+                self.refresh_epg();
+                return;
+            }
+
+            // show what is known from earlier runs
+            self.refresh_epg();
+
+            let view = self.obj().downgrade();
+            spawn(async move {
+                let Some(current) = view.upgrade() else {
+                    return;
+                };
+                if current.imp().epg_generation.get() != generation {
+                    return;
+                }
+                drop(current);
+
+                let (sender, mut receiver) = tokio::sync::mpsc::unbounded_channel();
+                tokio(async move { fritzbox.epg().start(channels, sender) }).await;
+
+                // the sweep ends, and with it the channel, when it is
+                // stopped or restarted
+                while receiver.recv().await.is_some() {
+                    while receiver.try_recv().is_ok() {}
+                    let Some(view) = view.upgrade() else { break };
+                    view.imp().refresh_epg();
+                }
+            });
+        }
+
+        /// Shows the current programme information on the cards.
+        fn refresh_epg(&self) {
+            let enabled = TvSettings::get().fritztv_epg();
+            let fritzbox = TvApplication::get().fritzbox();
+            let now = unix_now();
+
+            for channel in self.channel_objects.borrow().iter() {
+                let now_next = enabled
+                    .then(|| fritzbox.epg().now_next(&channel.stream_url(), now))
+                    .flatten();
+                show_now_next(channel, now_next.as_ref());
+            }
+        }
+
+        async fn load_logos(&self, logos: Vec<(ChannelList, String, ChannelObject)>) {
             let fritzbox = TvApplication::get().fritzbox();
 
             let cached_index = self.logo_index.borrow().clone();
@@ -147,7 +245,7 @@ mod imp {
                 }
             };
 
-            for (list, name, image) in logos {
+            for (list, name, channel) in logos {
                 let sources = LogoSources::new(&name, list, &index);
                 if sources.is_empty() {
                     continue;
@@ -164,9 +262,7 @@ mod imp {
                     };
                     match gdk::Texture::from_bytes(&glib::Bytes::from_owned(data)) {
                         Ok(texture) => {
-                            image.remove_css_class("dim-label");
-                            image.set_pixel_size(LOGO_SIZE);
-                            image.set_paintable(Some(&texture));
+                            channel.set_logo(Some(texture.upcast_ref::<gdk::Paintable>()))
                         }
                         Err(e) => tracing::debug!("invalid logo for “{name}”: {e:?}"),
                     }
@@ -229,6 +325,48 @@ mod imp {
                 self,
                 move |_| slf.reload_if_lists_changed()
             ));
+            settings.connect_fritztv_epg_changed(glib::clone!(
+                #[weak(rename_to = slf)]
+                self,
+                move |_| slf.update_epg()
+            ));
+
+            // a click on a card shows its details, or plays the channel if
+            // it has none
+            for list_box in [
+                &*self.tv_list,
+                &*self.hd_list,
+                &*self.sd_list,
+                &*self.radio_list,
+            ] {
+                list_box.connect_row_activated(|_, row| {
+                    let card = row
+                        .downcast_ref::<TvLiveCard>()
+                        .expect("invalid ListBoxRow type");
+                    let has_details = card.channel().is_some_and(|channel| {
+                        channel.description().is_some() || channel.next().is_some()
+                    });
+                    if has_details {
+                        card.set_expanded(!card.expanded());
+                    } else if let Err(e) = card.activate_action("card.play", None) {
+                        tracing::error!("failed to play the channel: {e:?}");
+                    }
+                });
+            }
+
+            glib::timeout_add_seconds_local(
+                EPG_REFRESH_SECONDS,
+                glib::clone!(
+                    #[weak(rename_to = slf)]
+                    self,
+                    #[upgrade_or]
+                    glib::ControlFlow::Break,
+                    move || {
+                        slf.refresh_epg();
+                        glib::ControlFlow::Continue
+                    }
+                ),
+            );
         }
     }
     impl WidgetImpl for TvFritzView {}
@@ -255,51 +393,47 @@ fn selected_lists() -> Vec<ChannelList> {
     )
 }
 
-fn channel_row(channel: &FritzChannel, list: ChannelList) -> (adw::ActionRow, gtk::Image) {
-    let row = adw::ActionRow::builder()
-        .title(&channel.name)
-        .use_markup(false)
-        .activatable(true)
-        .build();
+/// Shows the running and the following show on a card.
+fn show_now_next(channel: &ChannelObject, now_next: Option<&NowNext>) {
+    let current = now_next.and_then(|now_next| now_next.current.as_ref());
+    let next = now_next.and_then(|now_next| now_next.next.as_ref());
 
-    let logo = gtk::Image::builder()
-        .icon_name(match list {
-            ChannelList::Radio => "audio-x-generic-symbolic",
-            ChannelList::Tv | ChannelList::Hd | ChannelList::Sd => "tv-symbolic",
-        })
-        .pixel_size(24)
-        .width_request(LOGO_SIZE)
-        .height_request(LOGO_SIZE)
-        .css_classes(["dim-label"])
-        .build();
-    row.add_prefix(&logo);
-
-    let play_button = gtk::Button::builder()
-        .icon_name("play-symbolic")
-        .tooltip_text(gettext("Play"))
-        .valign(gtk::Align::Center)
-        .css_classes(["flat", "circular"])
-        .build();
-    row.add_suffix(&play_button);
-
-    let play = {
-        let name = channel.name.clone();
-        let url = channel.url.clone();
-        move || {
-            let name = name.clone();
-            let url = url.clone();
-            spawn(async move {
-                if let Err(e) = mpv::play(&name, &url).await {
-                    show_error(e);
-                }
-            });
-        }
-    };
-    row.connect_activated({
-        let play = play.clone();
-        move |_| play()
+    let title = current.map(|event| event.title.as_str());
+    let subtitle = current.and_then(|event| event.subtitle.as_deref());
+    // the description is displayed as markup
+    let description = current
+        .and_then(|event| event.description.as_deref())
+        .map(glib::markup_escape_text);
+    let description = description.as_deref();
+    let (start, end) = current.map_or((0, 0), |event| (event.start, event.end));
+    let next = next.and_then(|event| {
+        let time = format_timestamp_time(event.start)?;
+        // translators: `{time}` is the start time and `{title}` the title of
+        // the following show, e.g. “Next: 20:15 Tagesschau”
+        Some(
+            gettext("Next: {time} {title}")
+                .replace("{time}", &time)
+                .replace("{title}", &event.title),
+        )
     });
-    play_button.connect_clicked(move |_| play());
 
-    (row, logo)
+    // setting a property notifies even if its value didn't change
+    if channel.title().as_deref() != title {
+        channel.set_title(title);
+    }
+    if channel.subtitle().as_deref() != subtitle {
+        channel.set_subtitle(subtitle);
+    }
+    if channel.description().as_deref() != description {
+        channel.set_description(description);
+    }
+    if channel.start_time() != start {
+        channel.set_start_time(start);
+    }
+    if channel.end_time() != end {
+        channel.set_end_time(end);
+    }
+    if channel.next() != next {
+        channel.set_next(next.as_deref());
+    }
 }

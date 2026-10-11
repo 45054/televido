@@ -5,4 +5,8 @@ mod card;
 mod channels;
 mod view;
 
-pub use self::view::TvLiveView;
+pub use self::{
+    card::TvLiveCard,
+    channels::{ChannelKind, ChannelObject},
+    view::TvLiveView,
+};

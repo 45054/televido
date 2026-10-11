@@ -98,6 +98,13 @@ template $TvPreferencesDialog: Adw.PreferencesDialog {
         sensitive: bind template.fritztv-enabled;
       }
 
+      Adw.SwitchRow {
+        title: _("Show programme guide");
+        subtitle: _("Reads the current and next shows from the cable signal. While no channel is playing, the FRITZ!Box is tuned briefly to each frequency.");
+        active: bind template.fritztv-epg bidirectional;
+        sensitive: bind template.fritztv-enabled;
+      }
+
       Adw.ActionRow {
         title: _("mpv Arguments");
         subtitle: bind template.mpv-arguments-summary;

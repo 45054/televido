@@ -62,6 +62,9 @@
 		<key name="fritztv-show-radio" type="b">
 			<default>true</default>
 		</key>
+		<key name="fritztv-epg" type="b">
+			<default>true</default>
+		</key>
 		<key name="mpv-arguments" type="as">
 			<default>[
 				"--force-window=immediate",

@@ -8,7 +8,10 @@
 //! every TV channel once in the best available quality; older FRITZ!OS
 //! versions only provide the separate HD and SD lists. Every entry is an
 //! `rtsp://` URL which is played with mpv.
+//!
+//! The programme guide is read from the DVB stream itself, see [`epg`].
 
+mod epg;
 mod logos;
 mod m3u;
 mod tvapp;
@@ -23,6 +26,7 @@ use reqwest::{StatusCode, Url};
 use crate::config::{APP_ID, PROJECT_URL, VERSION};
 
 pub use self::{
+    epg::{unix_now, Epg, NowNext},
     logos::{LogoIndex, LogoSources},
     m3u::FritzChannel,
     view::TvFritzView,
@@ -95,6 +99,7 @@ impl FritzChannels {
 #[derive(Debug)]
 pub struct FritzBox {
     http: reqwest::Client,
+    epg: Epg,
 }
 
 impl FritzBox {
@@ -105,7 +110,13 @@ impl FritzBox {
                 .connect_timeout(Duration::from_secs(5))
                 .timeout(Duration::from_secs(15))
                 .build()?,
+            epg: Epg::new(adw::glib::user_cache_dir().join("televido/fritzbox-epg.json")),
         })
+    }
+
+    /// The programme guide of the channels.
+    pub fn epg(&self) -> &Epg {
+        &self.epg
     }
 
     pub async fn channels(
