@@ -43,6 +43,16 @@ pub struct NowNext {
     pub next: Option<Event>,
 }
 
+/// Why a multiplex should be scanned, from the least to the most urgent.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum Urgency {
+    /// The data is old, or a channel without data is checked again.
+    Refresh,
+    /// A channel shows no programme: the multiplex was never scanned, or the
+    /// events of a channel ran out.
+    Missing,
+}
+
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 struct ServiceEvents {
     /// Sorted by start time, without overlaps.
@@ -163,12 +173,16 @@ impl EpgStore {
     }
 
     /// Removes events that have ended.
+    ///
+    /// The services of known channels are kept without events, which tells
+    /// channels whose events ran out from channels without any.
     pub fn prune(&mut self, now: i64) {
+        let known: HashSet<_> = self.channels.values().copied().collect();
         for service in self.services.values_mut() {
             service.events.retain(|event| event.end > now);
         }
         self.services
-            .retain(|_, service| !service.events.is_empty());
+            .retain(|key, service| !service.events.is_empty() || known.contains(key));
     }
 
     /// Returns the running and the following event of a channel.
@@ -185,32 +199,47 @@ impl EpgStore {
         (current.is_some() || next.is_some()).then_some(NowNext { current, next })
     }
 
-    /// Returns `true` if scanning `mux` is useful: it was never scanned, or
-    /// the events of its channels ran out or are old.
+    /// Returns whether scanning `mux` is useful, and how urgent it is: it was
+    /// never scanned, or the events of its channels ran out or are old.
     ///
     /// Multiplexes that announce the events of other multiplexes ("EIT
     /// other") keep the data of all channels up to date, so that they don't
     /// need to be scanned themselves.
-    pub fn needs_scan(&self, mux: &Mux, now: i64) -> bool {
+    pub fn scan_urgency(&self, mux: &Mux, now: i64) -> Option<Urgency> {
         let Some(&last_scan) = self.scans.get(&mux.key) else {
-            return true;
+            return Some(Urgency::Missing);
         };
         let since_scan = now - last_scan;
         if since_scan < MIN_RESCAN {
-            return false;
+            return None;
         }
 
-        mux.channels.iter().any(|channel| {
-            let events = self
-                .channels
-                .get(&channel.identity)
-                .and_then(|service| self.services.get(service));
-            match events {
-                // the service doesn't provide events, or isn't known
-                None => since_scan >= NO_DATA_RETRY,
-                Some(events) => events.current(now).is_none() || now - events.updated >= MAX_AGE,
-            }
-        })
+        mux.channels
+            .iter()
+            .filter_map(|channel| {
+                let events = self
+                    .channels
+                    .get(&channel.identity)
+                    .and_then(|service| self.services.get(service));
+                match events {
+                    // the service doesn't provide events, or isn't known
+                    None => (since_scan >= NO_DATA_RETRY).then_some(Urgency::Refresh),
+                    Some(events) if events.events.iter().all(|event| event.end <= now) => {
+                        if events.updated >= last_scan {
+                            // the events ran out, although the last scan
+                            // still provided some
+                            Some(Urgency::Missing)
+                        } else {
+                            // the last scan provided no events anymore
+                            (since_scan >= NO_DATA_RETRY).then_some(Urgency::Refresh)
+                        }
+                    }
+                    Some(events) => (events.current(now).is_none()
+                        || now - events.updated >= MAX_AGE)
+                        .then_some(Urgency::Refresh),
+                }
+            })
+            .max()
     }
 }
 
@@ -368,15 +397,20 @@ mod tests {
     fn decides_which_multiplexes_to_scan() {
         let mux = mux();
         let mut store = EpgStore::default();
-        assert!(store.needs_scan(&mux, NOW), "never scanned");
+        assert_eq!(
+            store.scan_urgency(&mux, NOW),
+            Some(Urgency::Missing),
+            "never scanned"
+        );
 
         store.add_scan(&mux, &scan(vec![event(1, NOW - 60, NOW + 600, "A")]), NOW);
-        assert!(!store.needs_scan(&mux, NOW + 10), "just scanned");
-        assert!(!store.needs_scan(&mux, NOW + 400), "data is current");
+        assert_eq!(store.scan_urgency(&mux, NOW + 10), None, "just scanned");
+        assert_eq!(store.scan_urgency(&mux, NOW + 400), None, "data is current");
 
         // the events ran out
-        assert!(
-            store.needs_scan(&mux, NOW + 601 + MIN_RESCAN),
+        assert_eq!(
+            store.scan_urgency(&mux, NOW + 601 + MIN_RESCAN),
+            Some(Urgency::Missing),
             "data ran out"
         );
 
@@ -385,9 +419,51 @@ mod tests {
             &eit(0, vec![event(2, NOW + 600, NOW + 5000, "B")]),
             NOW + 700,
         );
-        assert!(!store.needs_scan(&mux, NOW + 1000));
+        assert_eq!(store.scan_urgency(&mux, NOW + 1000), None);
         // but not forever
-        assert!(store.needs_scan(&mux, NOW + 700 + MAX_AGE));
+        assert_eq!(
+            store.scan_urgency(&mux, NOW + 700 + MAX_AGE),
+            Some(Urgency::Refresh)
+        );
+    }
+
+    #[test]
+    fn refreshes_channels_between_events() {
+        let mux = mux();
+        let mut store = EpgStore::default();
+        store.add_scan(
+            &mux,
+            &scan(vec![event(1, NOW + 600, NOW + 900, "Later")]),
+            NOW,
+        );
+        assert_eq!(
+            store.scan_urgency(&mux, NOW + MIN_RESCAN),
+            Some(Urgency::Refresh)
+        );
+    }
+
+    #[test]
+    fn prioritizes_channels_whose_events_ran_out() {
+        let mux = mux();
+        let mut store = EpgStore::default();
+        store.add_scan(&mux, &scan(vec![event(1, NOW - 60, NOW + 600, "A")]), NOW);
+
+        // the scan of another multiplex removes the ended events
+        store.prune(NOW + 700);
+        assert_eq!(store.now_next(&identity(), NOW + 700), None);
+        assert_eq!(store.scan_urgency(&mux, NOW + 700), Some(Urgency::Missing));
+
+        // the same after a restart
+        let loaded = EpgStore::from_json(&store.to_json().unwrap(), NOW + 700);
+        assert_eq!(loaded.scan_urgency(&mux, NOW + 700), Some(Urgency::Missing));
+
+        // if the next scan provides no events, the service is checked rarely
+        store.add_scan(&mux, &scan(vec![]), NOW + 700);
+        assert_eq!(store.scan_urgency(&mux, NOW + 700 + MIN_RESCAN), None);
+        assert_eq!(
+            store.scan_urgency(&mux, NOW + 700 + NO_DATA_RETRY),
+            Some(Urgency::Refresh)
+        );
     }
 
     #[test]
@@ -396,8 +472,11 @@ mod tests {
         let mut store = EpgStore::default();
         store.add_scan(&mux, &scan(vec![]), NOW);
 
-        assert!(!store.needs_scan(&mux, NOW + MIN_RESCAN + 1));
-        assert!(store.needs_scan(&mux, NOW + NO_DATA_RETRY));
+        assert_eq!(store.scan_urgency(&mux, NOW + MIN_RESCAN + 1), None);
+        assert_eq!(
+            store.scan_urgency(&mux, NOW + NO_DATA_RETRY),
+            Some(Urgency::Refresh)
+        );
     }
 
     #[test]
@@ -405,7 +484,7 @@ mod tests {
         let mux = mux();
         let mut store = EpgStore::default();
         store.add_scan(&mux, &Scan::default(), NOW);
-        assert!(store.needs_scan(&mux, NOW + 1));
+        assert_eq!(store.scan_urgency(&mux, NOW + 1), Some(Urgency::Missing));
     }
 
     #[test]
@@ -440,6 +519,11 @@ mod tests {
         let loaded = EpgStore::from_json(&store.to_json().unwrap(), NOW);
         assert_eq!(loaded.services.len(), 1);
         assert!(loaded.services.contains_key(&service()));
+
+        // after the events ended, only the service of the channel is kept
+        store.prune(NOW + 100);
+        assert_eq!(store.services.len(), 1);
+        assert!(store.services[&service()].events.is_empty());
     }
 
     #[test]
@@ -459,7 +543,7 @@ mod tests {
         let loaded = EpgStore::from_json(&json, NOW + 100);
         let now_next = loaded.now_next(&identity(), NOW + 100).unwrap();
         assert_eq!(now_next.current.unwrap().title, "B");
-        assert!(!loaded.needs_scan(&mux(), NOW + 100));
+        assert_eq!(loaded.scan_urgency(&mux(), NOW + 100), None);
 
         assert!(EpgStore::from_json(b"{ not json", NOW).services.is_empty());
         assert!(EpgStore::from_json(b"", NOW).channels.is_empty());
