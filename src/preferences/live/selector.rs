@@ -208,7 +208,8 @@ mod imp {
 
 glib::wrapper! {
     pub struct TvLiveChannelSelector(ObjectSubclass<imp::TvLiveChannelSelector>)
-        @extends gtk::Widget, adw::NavigationPage;
+        @extends gtk::Widget, adw::NavigationPage,
+        @implements gtk::Accessible, gtk::Buildable, gtk::ConstraintTarget;
 }
 
 impl TvLiveChannelSelector {

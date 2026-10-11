@@ -375,7 +375,8 @@ mod imp {
 
 glib::wrapper! {
     pub struct TvFritzView(ObjectSubclass<imp::TvFritzView>)
-        @extends gtk::Widget, adw::Bin;
+        @extends gtk::Widget, adw::Bin,
+        @implements gtk::Accessible, gtk::Buildable, gtk::ConstraintTarget;
 }
 
 impl TvFritzView {

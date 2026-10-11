@@ -9,9 +9,9 @@ use std::{
 use adw::{glib, gtk, prelude::*, subclass::prelude::*};
 
 use crate::{
+    application::VideoInfo,
     channel_icons::load_channel_icon,
     mpv,
-    player::VideoInfo,
     utils::{show_error, spawn, tokio},
     TvApplication,
 };
@@ -144,12 +144,13 @@ mod imp {
                             .play(VideoInfo::Live {
                                 title: channel.name(),
                                 uri: channel.stream_url(),
-                                channel_id: channel.id(),
                             })
                             .await
                     }
                     ChannelKind::Fritz | ChannelKind::FritzRadio => {
-                        if let Err(e) = mpv::play(&channel.name(), &channel.stream_url()).await {
+                        if let Err(e) =
+                            mpv::play(&channel.name(), &channel.stream_url(), true).await
+                        {
                             show_error(e);
                         }
                     }
@@ -209,5 +210,6 @@ mod imp {
 
 glib::wrapper! {
     pub struct TvLiveCard(ObjectSubclass<imp::TvLiveCard>)
-        @extends gtk::Widget, gtk::ListBoxRow;
+        @extends gtk::Widget, gtk::ListBoxRow,
+        @implements gtk::Accessible, gtk::Buildable, gtk::ConstraintTarget, gtk::Actionable;
 }

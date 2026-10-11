@@ -46,23 +46,79 @@
   ],
   "modules": [
     {
-      "name": "clapper",
-      "buildsystem": "meson",
-      "config-opts": [
-        "-Dclapper=enabled",
-        "-Dclapper-gtk=enabled",
-        "-Dclapper-app=disabled",
-        "-Denhancers-loader=disabled"
+      "name": "luajit",
+      "buildsystem": "simple",
+      "build-commands": [
+        "make -j${FLATPAK_BUILDER_N_JOBS} PREFIX=/app",
+        "make install PREFIX=/app"
       ],
       "cleanup": [
-        "/include",
-        "/lib/pkgconfig"
+        "/bin",
+        "/share/man",
+        "/share/lua"
       ],
       "sources": [
         {
           "type": "git",
-          "url": "https://github.com/Rafostar/clapper.git",
-          "tag": "0.8.0"
+          "url": "https://github.com/LuaJIT/LuaJIT.git",
+          "branch": "v2.1",
+          "disable-shallow-clone": true
+        }
+      ]
+    },
+    {
+      "name": "libass",
+      "buildsystem": "autotools",
+      "config-opts": ["--disable-static"],
+      "sources": [
+        {
+          "type": "git",
+          "url": "https://github.com/libass/libass.git",
+          "tag": "0.17.3"
+        }
+      ]
+    },
+    {
+      "name": "libplacebo",
+      "buildsystem": "meson",
+      "config-opts": [
+        "-Ddemos=false",
+        "-Dtests=false"
+      ],
+      "sources": [
+        {
+          "type": "git",
+          "url": "https://code.videolan.org/videolan/libplacebo.git",
+          "tag": "v7.360.0"
+        }
+      ]
+    },
+    {
+      "name": "mpv",
+      "buildsystem": "meson",
+      "config-opts": [
+        "-Dlua=luajit",
+        "-Dlibmpv=false",
+        "-Dcplayer=true",
+        "-Dmanpage-build=disabled",
+        "-Dhtml-build=disabled",
+        "-Dpdf-build=disabled"
+      ],
+      "cleanup": [
+        "/share/bash-completion",
+        "/share/zsh",
+        "/share/fish",
+        "/share/applications",
+        "/share/icons",
+        "/share/metainfo",
+        "/share/doc",
+        "/etc/mpv"
+      ],
+      "sources": [
+        {
+          "type": "git",
+          "url": "https://github.com/mpv-player/mpv.git",
+          "tag": "v0.40.0"
         }
       ]
     },

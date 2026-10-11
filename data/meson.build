@@ -49,15 +49,10 @@ install_data(
   BASE_APP_ID + '.gschema.xml',
   install_dir: get_option('datadir') / 'glib-2.0' / 'schemas',
 )
-install_data(
-  BASE_APP_ID + '.Player' + '.gschema.xml',
-  install_dir: get_option('datadir') / 'glib-2.0' / 'schemas',
-)
 
 gnome.compile_schemas(
   depend_files: files(
     BASE_APP_ID + '.gschema.xml',
-    BASE_APP_ID + '.Player' + '.gschema.xml',
   ),
 )
 

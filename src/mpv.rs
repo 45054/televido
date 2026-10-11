@@ -1,13 +1,14 @@
 // SPDX-FileCopyrightText: David Cabot <d-k-bo@mailbox.org>
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-//! Playback of FRITZ!Box channels with mpv.
+//! Video playback with mpv.
 //!
-//! The FRITZ!Box only serves one stream per client, so there is at most one
-//! mpv process at a time: starting a new channel terminates the previous
-//! process first (mpv then sends an RTSP TEARDOWN to free the tuner). For
-//! the same reason, reading the programme guide is paused while a channel is
-//! playing, see [`crate::fritzbox::Epg`].
+//! There is at most one mpv process at a time: playing a new video terminates
+//! the previous process first. This matters for FRITZ!Box channels, because
+//! the FRITZ!Box only serves one stream per client (mpv sends an RTSP TEARDOWN
+//! on exit to free the tuner). For the same reason, reading the programme
+//! guide is paused while a FRITZ!Box channel is playing, see
+//! [`crate::fritzbox::Epg`].
 
 use std::{cell::RefCell, ffi::OsStr, time::Duration};
 
@@ -32,8 +33,15 @@ const OUTPUT_TAIL_SIZE: usize = 8 * 1024;
 /// mpv exit code when quitting due to a signal or the quit key bindings.
 const EXIT_CODE_QUIT: i32 = 4;
 
+/// The running mpv process.
+struct Current {
+    process: gio::Subprocess,
+    /// Whether it plays a FRITZ!Box channel and therefore holds the tuner.
+    uses_tuner: bool,
+}
+
 thread_local! {
-    static CURRENT: RefCell<Option<gio::Subprocess>> = const { RefCell::new(None) };
+    static CURRENT: RefCell<Option<Current>> = const { RefCell::new(None) };
 }
 
 pub fn is_installed() -> bool {
@@ -41,27 +49,31 @@ pub fn is_installed() -> bool {
 }
 
 /// Plays `uri` in a new mpv process, replacing the currently running one.
-pub async fn play(title: &str, uri: &str) -> eyre::Result<()> {
-    // the programme guide needs the tuner, too
+///
+/// `uses_tuner` must be set for FRITZ!Box channels.
+pub async fn play(title: &str, uri: &str, uses_tuner: bool) -> eyre::Result<()> {
     let tuner = TvApplication::get().fritzbox().epg().tuner();
-    {
+
+    if uses_tuner {
+        // the programme guide needs the tuner, too
         let tuner = tuner.clone();
         tokio(async move { tuner.begin_playback().await }).await;
+        stop().await;
+    } else if stop().await {
+        tuner.end_playback();
     }
 
-    let result = start(title, uri).await;
-    if result.is_err() {
+    let result = start(title, uri, uses_tuner);
+    if result.is_err() && uses_tuner {
         tuner.end_playback();
     }
     result
 }
 
-async fn start(title: &str, uri: &str) -> eyre::Result<()> {
-    stop().await;
-
+fn start(title: &str, uri: &str, uses_tuner: bool) -> eyre::Result<()> {
     if !is_installed() {
         eyre::bail!(gettext(
-            "mpv is not installed. FritzTV needs the mpv video player."
+            "mpv is not installed. Televido needs the mpv video player."
         ));
     }
 
@@ -88,16 +100,27 @@ async fn start(title: &str, uri: &str) -> eyre::Result<()> {
     )
     .map_err(|e| eyre::eyre!(e).wrap_err(gettext("Failed to start mpv")))?;
 
-    CURRENT.with(|current| current.replace(Some(process.clone())));
+    CURRENT.with(|current| {
+        current.replace(Some(Current {
+            process: process.clone(),
+            uses_tuner,
+        }))
+    });
     spawn(watch(process, title.to_owned()));
 
     Ok(())
 }
 
 /// Terminates the running mpv process and waits until it has exited.
-pub async fn stop() {
-    let Some(process) = CURRENT.with(|current| current.take()) else {
-        return;
+///
+/// Returns whether the terminated process held the FRITZ!Box tuner.
+async fn stop() -> bool {
+    let Some(Current {
+        process,
+        uses_tuner,
+    }) = CURRENT.with(|current| current.take())
+    else {
+        return false;
     };
 
     process.send_signal(SIGTERM);
@@ -113,17 +136,24 @@ pub async fn stop() {
         process.force_exit();
         let _ = process.wait_future().await;
     }
+
+    uses_tuner
 }
 
 /// Terminates the running mpv process without waiting, e.g. on shutdown.
 pub fn terminate() {
-    if let Some(process) = CURRENT.with(|current| current.take()) {
-        process.send_signal(SIGTERM);
+    if let Some(current) = CURRENT.with(|current| current.take()) {
+        current.process.send_signal(SIGTERM);
     }
 }
 
 fn is_current(process: &gio::Subprocess) -> bool {
-    CURRENT.with(|current| current.borrow().as_ref() == Some(process))
+    CURRENT.with(|current| {
+        current
+            .borrow()
+            .as_ref()
+            .is_some_and(|current| &current.process == process)
+    })
 }
 
 /// Keeps the application alive while mpv is running and reports errors.
@@ -155,8 +185,12 @@ async fn watch(process: gio::Subprocess, title: String) {
     if !is_current(&process) {
         return;
     }
-    CURRENT.with(|current| current.take());
-    TvApplication::get().fritzbox().epg().tuner().end_playback();
+    let uses_tuner = CURRENT
+        .with(|current| current.take())
+        .is_some_and(|current| current.uses_tuner);
+    if uses_tuner {
+        TvApplication::get().fritzbox().epg().tuner().end_playback();
+    }
 
     if !process.has_exited() {
         return;
@@ -184,7 +218,7 @@ async fn watch(process: gio::Subprocess, title: String) {
         window.add_toast(
             adw::Toast::builder()
                 .title(
-                    // translators: `{channel}` is replaced by the channel name, `{error}` by the error message of mpv
+                    // translators: `{channel}` is replaced by the channel name or the title of the show, `{error}` by the error message of mpv
                     gettext("mpv could not play “{channel}”: {error}")
                         .replace("{channel}", &title)
                         .replace("{error}", &reason),

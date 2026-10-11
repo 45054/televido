@@ -6,11 +6,40 @@ using Adw 1;
 template $TvPreferencesDialog: Adw.PreferencesDialog {
   Adw.PreferencesPage {
     Adw.PreferencesGroup {
-      title: _("External Programs");
-      name: "external-programs";
+      title: _("Playback");
+      description: _("Videos are played with mpv.");
+      name: "playback";
+
+      Adw.ActionRow {
+        title: _("mpv is not installed");
+        subtitle: _("Televido needs the mpv video player");
+        visible: bind template.mpv-missing;
+
+        [prefix]
+        Gtk.Image {
+          icon-name: "dialog-warning-symbolic";
+
+          styles [
+            "warning"
+          ]
+        }
+      }
+
+      Adw.ActionRow {
+        title: _("mpv Arguments");
+        subtitle: bind template.mpv-arguments-summary;
+        subtitle-lines: 1;
+        activatable: true;
+        activated => $edit_mpv_arguments() swapped;
+
+        Gtk.Image {
+          icon-name: "go-next-symbolic";
+        }
+      }
 
       Adw.SwitchRow {
         title: _("Use external video player");
+        subtitle: _("Play live channels and the Mediathek with another player. FritzTV always uses mpv.");
         active: bind template.use-external-player bidirectional;
       }
 
@@ -25,6 +54,11 @@ template $TvPreferencesDialog: Adw.PreferencesDialog {
           clicked => $select_video_player() swapped;
         }
       }
+    }
+
+    Adw.PreferencesGroup {
+      title: _("Download");
+      name: "download";
 
       Adw.ActionRow video_downloader_row {
         title: _("Video Downloader");
@@ -55,23 +89,8 @@ template $TvPreferencesDialog: Adw.PreferencesDialog {
 
     Adw.PreferencesGroup {
       title: _("FritzTV");
-      description: _("Watch the DVB-C channels of a FRITZ!Box Cable with mpv. If “fritz.box” does not work, enter the IP address of your FRITZ!Box, e.g. 192.168.178.1.");
+      description: _("Watch the DVB-C channels of a FRITZ!Box Cable. If “fritz.box” does not work, enter the IP address of your FRITZ!Box, e.g. 192.168.178.1.");
       name: "fritztv";
-
-      Adw.ActionRow {
-        title: _("mpv is not installed");
-        subtitle: _("FritzTV needs the mpv video player");
-        visible: bind template.mpv-missing;
-
-        [prefix]
-        Gtk.Image {
-          icon-name: "dialog-warning-symbolic";
-
-          styles [
-            "warning"
-          ]
-        }
-      }
 
       Adw.SwitchRow {
         title: _("Show FritzTV");
@@ -103,19 +122,6 @@ template $TvPreferencesDialog: Adw.PreferencesDialog {
         subtitle: _("Reads the current and next shows from the cable signal. While no channel is playing, the FRITZ!Box is tuned briefly to each frequency.");
         active: bind template.fritztv-epg bidirectional;
         sensitive: bind template.fritztv-enabled;
-      }
-
-      Adw.ActionRow {
-        title: _("mpv Arguments");
-        subtitle: bind template.mpv-arguments-summary;
-        subtitle-lines: 1;
-        activatable: true;
-        sensitive: bind template.fritztv-enabled;
-        activated => $edit_mpv_arguments() swapped;
-
-        Gtk.Image {
-          icon-name: "go-next-symbolic";
-        }
       }
     }
   }

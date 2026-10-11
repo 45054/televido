@@ -17,7 +17,6 @@ use crate::{
     fritzbox::FritzBox,
     launcher::{ExternalProgram, ExternalProgramType, ProgramSelector},
     mpv,
-    player::{TvPlayer, VideoInfo},
     preferences::TvPreferencesDialog,
     settings::{TvSettings, VideoQuality},
     utils::{show_error, spawn, spawn_clone, tokio, AsyncResource},
@@ -37,7 +36,6 @@ mod imp {
         pub(super) fritzbox: Arc<FritzBox>,
         pub(super) live_channels: AsyncResource<Rc<crate::zapp::ChannelInfoList>>,
         pub(super) window: RefCell<Option<glib::WeakRef<TvWindow>>>,
-        pub(super) player: RefCell<Option<glib::WeakRef<TvPlayer>>>,
     }
 
     #[glib::object_subclass]
@@ -85,7 +83,6 @@ impl TvApplication {
     pub fn new() -> Self {
         let slf: Self = glib::Object::builder()
             .property("application-id", APP_ID)
-            .property("flags", gio::ApplicationFlags::FLAGS_NONE)
             .property("resource-base-path", "/de/k_bo/televido")
             .build();
 
@@ -156,19 +153,6 @@ impl TvApplication {
         }
     }
 
-    pub fn player(&self) -> TvPlayer {
-        let mut player = self.imp().player.borrow_mut();
-
-        match player.as_ref().and_then(|p| p.upgrade()) {
-            Some(player) => player,
-            None => {
-                let new_player = TvPlayer::new(self);
-                *player = Some(glib::clone::Downgrade::downgrade(&new_player));
-                new_player
-            }
-        }
-    }
-
     pub fn zapp(&self) -> Arc<Zapp> {
         self.imp().zapp.clone()
     }
@@ -217,28 +201,12 @@ impl TvApplication {
                 }
             };
 
-            let uri = match video {
-                VideoInfo::Live { uri, .. } => uri,
-                VideoInfo::Mediathek {
-                    preferred_quality,
-                    uri_high,
-                    uri_medium,
-                    uri_low,
-                    ..
-                } => match preferred_quality {
-                    VideoQuality::High => uri_high.expect("no high quality video URI set"),
-                    VideoQuality::Medium => uri_medium.expect("no medium quality video URI set"),
-                    VideoQuality::Low => uri_low.expect("no low quality video URI set"),
-                },
-            };
-            match player.open(uri).await {
+            match player.open(video.uri().to_owned()).await {
                 Ok(()) => (),
                 Err(e) => show_error(e.wrap_err(gettext("Failed to play video stream"))),
             }
-        } else {
-            let player = self.player();
-            player.play(video);
-            player.present();
+        } else if let Err(e) = mpv::play(video.title(), video.uri(), false).await {
+            show_error(e);
         }
     }
 
@@ -330,5 +298,47 @@ impl TvApplication {
         about.set_version(VERSION);
 
         about.present(Some(&self.window()));
+    }
+}
+
+#[derive(Debug)]
+pub enum VideoInfo {
+    Live {
+        title: String,
+        uri: String,
+    },
+    Mediathek {
+        title: String,
+        preferred_quality: VideoQuality,
+        uri_high: Option<String>,
+        uri_medium: Option<String>,
+        uri_low: Option<String>,
+    },
+}
+
+impl VideoInfo {
+    pub fn title(&self) -> &str {
+        match self {
+            VideoInfo::Live { title, .. } | VideoInfo::Mediathek { title, .. } => title,
+        }
+    }
+
+    pub fn uri(&self) -> &str {
+        match self {
+            VideoInfo::Live { uri, .. } => uri,
+            VideoInfo::Mediathek {
+                preferred_quality,
+                uri_high,
+                uri_medium,
+                uri_low,
+                ..
+            } => match preferred_quality {
+                VideoQuality::High => uri_high.as_deref().expect("no high quality video URI set"),
+                VideoQuality::Medium => uri_medium
+                    .as_deref()
+                    .expect("no medium quality video URI set"),
+                VideoQuality::Low => uri_low.as_deref().expect("no low quality video URI set"),
+            },
+        }
     }
 }
