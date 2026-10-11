@@ -69,7 +69,7 @@ TELEVIDO_BRANCH=mein-branch makepkg -si
 TELEVIDO_SOURCE="file://$(git rev-parse --show-toplevel)" TELEVIDO_BRANCH="$(git branch --show-current)" makepkg -si
 ```
 
-Beim Wechsel von `TELEVIDO_SOURCE` vorher den zwischengespeicherten Klon `build-aux/arch/televido/` löschen. makepkg aktualisiert bei jedem Bau die Zeile `pkgver` im PKGBUILD.
+Beim Wechsel von `TELEVIDO_SOURCE` vorher den zwischengespeicherten Klon `build-aux/arch/televido-fritz/` löschen. makepkg aktualisiert bei jedem Bau die Zeile `pkgver` im PKGBUILD.
 
 ## Senderlogos
 

@@ -27,25 +27,25 @@
 	<launchable type="desktop-id">de.k_bo.Televido.desktop</launchable>
 	<screenshots>
 		<screenshot type="default">
-			<image>https://raw.githubusercontent.com/45054/televido/main/data/screenshots/1.png</image>
+			<image>https://raw.githubusercontent.com/45054/televido-fritz/main/data/screenshots/1.png</image>
 		</screenshot>
 		<screenshot>
-			<image>https://raw.githubusercontent.com/45054/televido/main/data/screenshots/2.png</image>
+			<image>https://raw.githubusercontent.com/45054/televido-fritz/main/data/screenshots/2.png</image>
 		</screenshot>
 		<screenshot>
-			<image>https://raw.githubusercontent.com/45054/televido/main/data/screenshots/3.png</image>
+			<image>https://raw.githubusercontent.com/45054/televido-fritz/main/data/screenshots/3.png</image>
 		</screenshot>
 		<screenshot>
-			<image>https://raw.githubusercontent.com/45054/televido/main/data/screenshots/4.png</image>
+			<image>https://raw.githubusercontent.com/45054/televido-fritz/main/data/screenshots/4.png</image>
 		</screenshot>
 	</screenshots>
 	<branding>
 		<color type="primary" scheme_preference="light">#b5835a</color>
 		<color type="primary" scheme_preference="dark">#3f2d1d</color>
 	</branding>
-	<url type="homepage">https://github.com/45054/televido</url>
-	<url type="bugtracker">https://github.com/45054/televido/issues</url>
-	<url type="vcs-browser">https://github.com/45054/televido</url>
+	<url type="homepage">https://github.com/45054/televido-fritz</url>
+	<url type="bugtracker">https://github.com/45054/televido-fritz/issues</url>
+	<url type="vcs-browser">https://github.com/45054/televido-fritz</url>
 	<translation type="gettext">televido</translation>
 	<content_rating type="oars-1.1" />
 	<requires>

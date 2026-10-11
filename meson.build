@@ -46,8 +46,8 @@ CONFIG = {
   'BASE_APP_ID': BASE_APP_ID,
   'APP_NAME': 'Televido',
   'AUTHOR': 'David Cabot, Televido contributors',
-  'PROJECT_URL': 'https://github.com/45054/televido',
-  'ISSUE_URL': 'https://github.com/45054/televido/issues',
+  'PROJECT_URL': 'https://github.com/45054/televido-fritz',
+  'ISSUE_URL': 'https://github.com/45054/televido-fritz/issues',
   'LOCALEDIR': get_option('prefix') / get_option('localedir'),
   'PKGDATADIR': get_option('prefix') / get_option('datadir') / meson.project_name(),
 }

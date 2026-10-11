@@ -3,6 +3,8 @@
 # SPDX-License-Identifier: CC0-1.0
 
 # makepkg build artifacts
+/televido-fritz/
+# the clone of builds before the rename of the repository
 /televido/
 /src/
 /pkg/
