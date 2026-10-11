@@ -16,7 +16,10 @@ use crate::{
     settings::TvSettings,
 };
 
-use super::{live::TvLiveChannelSelector, mpv_arguments::TvMpvArgumentsPage};
+use super::{
+    live::TvLiveChannelSelector,
+    mpv_arguments::{self, TvMpvArgumentsPage},
+};
 
 mod imp {
     use super::*;
@@ -51,6 +54,8 @@ mod imp {
         mpv_missing: Cell<bool>,
         #[property(get)]
         mpv_arguments_summary: RefCell<String>,
+        #[property(get)]
+        mpv_arguments_fritzbox_summary: RefCell<String>,
 
         #[property(get)]
         settings: TvSettings,
@@ -88,7 +93,13 @@ mod imp {
         }
         #[template_callback]
         fn edit_mpv_arguments(&self, #[rest] _: &[glib::Value]) {
-            self.obj().push_subpage(&TvMpvArgumentsPage::new())
+            self.obj()
+                .push_subpage(&TvMpvArgumentsPage::new(mpv_arguments::GENERAL_KEY))
+        }
+        #[template_callback]
+        fn edit_mpv_arguments_fritzbox(&self, #[rest] _: &[glib::Value]) {
+            self.obj()
+                .push_subpage(&TvMpvArgumentsPage::new(mpv_arguments::FRITZBOX_KEY))
         }
         #[template_callback]
         fn apply_fritzbox_address(&self, #[rest] _: &[glib::Value]) {
@@ -147,15 +158,22 @@ mod imp {
             self.obj().notify_video_downloader_display_name();
         }
         fn update_mpv_arguments_summary(&self) {
-            let arguments = self.settings.mpv_arguments();
-
-            *self.mpv_arguments_summary.borrow_mut() = if arguments.is_empty() {
-                gettext("No arguments")
-            } else {
-                arguments.join(" ")
-            };
-
+            *self.mpv_arguments_summary.borrow_mut() =
+                arguments_summary(self.settings.mpv_arguments());
             self.obj().notify_mpv_arguments_summary();
+        }
+        fn update_mpv_arguments_fritzbox_summary(&self) {
+            *self.mpv_arguments_fritzbox_summary.borrow_mut() =
+                arguments_summary(self.settings.mpv_arguments_fritzbox());
+            self.obj().notify_mpv_arguments_fritzbox_summary();
+        }
+    }
+
+    fn arguments_summary(arguments: Vec<String>) -> String {
+        if arguments.is_empty() {
+            gettext("No arguments")
+        } else {
+            arguments.join(" ")
         }
     }
 
@@ -206,6 +224,13 @@ mod imp {
                 self,
                 move |_| slf.update_mpv_arguments_summary()
             ));
+            self.update_mpv_arguments_fritzbox_summary();
+            self.settings
+                .connect_mpv_arguments_fritzbox_changed(glib::clone!(
+                    #[weak(rename_to = slf)]
+                    self,
+                    move |_| slf.update_mpv_arguments_fritzbox_summary()
+                ));
 
             self.update_video_player_display_name();
             self.settings

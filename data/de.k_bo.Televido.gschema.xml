@@ -69,6 +69,11 @@
 			<default>[
 				"--force-window=immediate",
 				"--hwdec=auto",
+				"--msg-level=ffmpeg=fatal"
+			]</default>
+		</key>
+		<key name="mpv-arguments-fritzbox" type="as">
+			<default>[
 				"--rtsp-transport=udp",
 				"--deinterlace=auto",
 				"--cache=yes",
@@ -77,8 +82,7 @@
 				"--cache-pause-wait=1.5",
 				"--demuxer-lavf-analyzeduration=3",
 				"--demuxer-lavf-probesize=5000000",
-				"--demuxer-lavf-o=buffer_size=4194304",
-				"--msg-level=ffmpeg=fatal"
+				"--demuxer-lavf-o=buffer_size=4194304"
 			]</default>
 		</key>
 	</schema>
