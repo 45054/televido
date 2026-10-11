@@ -1,4 +1,5 @@
-# SPDX-FileCopyrightText: Televido contributors
+# SPDX-FileCopyrightText: 2026 Televido contributors
+# SPDX-FileContributor: Claude (Anthropic)
 # SPDX-License-Identifier: CC0-1.0
 #
 # Git-based package for local builds on Arch Linux, derived from the AUR
@@ -14,11 +15,11 @@
 #     TELEVIDO_BRANCH="$(git branch --show-current)" makepkg -si
 # When switching TELEVIDO_SOURCE, delete the cached clone (./televido) first.
 
-pkgname=televido-git
+pkgname=televido-fritz-git
 _pkgname=televido
 pkgver=0.5.0.r69.g4dc7b8e
 pkgrel=1
-pkgdesc="Access German-language public broadcasting live streams and archives on the Linux Desktop"
+pkgdesc="Access German-language public broadcasting live streams and archives on the Linux Desktop, and the DVB-C channels of a FRITZ!Box Cable"
 arch=(x86_64 aarch64)
 url="https://github.com/45054/televido"
 license=('GPL-3.0-or-later')

@@ -1,9 +1,18 @@
 <!-- SPDX-FileCopyrightText: David Cabot <d-k-bo@mailbox.org> -->
+<!-- SPDX-FileCopyrightText: 2026 Televido contributors -->
+<!-- SPDX-FileContributor: Claude (Anthropic) -->
 <!-- SPDX-License-Identifier: GPL-3.0-or-later -->
 
 [Deutsche Version](README.de.md)
 
 # Televido
+
+> [!NOTE]
+> ## This is a fork
+>
+> This repository continues [d-k-bo/televido](https://github.com/d-k-bo/televido), which its original author has discontinued (see his notice below). The fork adds [FritzTV](#fritztv-fritzbox-cable-dvb-c), the DVB-C channels of a FRITZ!Box Cable, plays all videos with mpv and contains further changes. Its Arch Linux package is called `televido-fritz-git`.
+>
+> All changes in this fork since October 2026 were written by Claude, an AI assistant by Anthropic, according to the requirements of the fork's maintainer. Their copyright notices name “Televido contributors”, and the files name Claude as contributor (`SPDX-FileContributor`). The copyright of the original code remains with David Cabot. Everything stays licensed under the GPL-3.0-or-later.
 
 > [!WARNING]
 > ## This project is no longer maintained
@@ -46,7 +55,7 @@ FritzTV starts mpv as a regular process and is therefore intended for native ins
 
 ## Building on Arch Linux
 
-[`build-aux/arch/PKGBUILD`](build-aux/arch/PKGBUILD) builds a `televido-git` package from this repository, including FritzTV and its mpv dependency:
+[`build-aux/arch/PKGBUILD`](build-aux/arch/PKGBUILD) builds a `televido-fritz-git` package from this repository (it replaces an installed `televido` or `televido-git`), including FritzTV and its mpv dependency:
 
 ```
 cd build-aux/arch
