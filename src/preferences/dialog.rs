@@ -43,6 +43,8 @@ mod imp {
         fritztv_separate_hd_sd: Cell<bool>,
         #[property(get, set)]
         fritztv_show_radio: Cell<bool>,
+        #[property(get, set)]
+        fritztv_epg: Cell<bool>,
         #[property(get)]
         mpv_missing: Cell<bool>,
         #[property(get)]
@@ -188,6 +190,9 @@ mod imp {
                 .build();
             self.settings
                 .bind_fritztv_show_radio(&*self.obj(), "fritztv-show-radio")
+                .build();
+            self.settings
+                .bind_fritztv_epg(&*self.obj(), "fritztv-epg")
                 .build();
             self.mpv_missing.set(!mpv::is_installed());
             self.fritzbox_address_row

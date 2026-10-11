@@ -61,6 +61,7 @@ mod imp {
         }
 
         fn shutdown(&self) {
+            self.fritzbox.epg().shutdown();
             mpv::terminate();
             self.parent_shutdown();
         }

@@ -10,12 +10,13 @@ use adw::{glib, gtk, prelude::*, subclass::prelude::*};
 
 use crate::{
     channel_icons::load_channel_icon,
+    mpv,
     player::VideoInfo,
-    utils::{spawn, tokio},
+    utils::{show_error, spawn, tokio},
     TvApplication,
 };
 
-use super::channels::ChannelObject;
+use super::channels::{ChannelKind, ChannelObject};
 
 mod imp {
     use super::*;
@@ -35,6 +36,10 @@ mod imp {
         #[template_child]
         revealer: TemplateChild<gtk::Revealer>,
         #[template_child]
+        description: TemplateChild<gtk::Label>,
+        #[template_child]
+        next: TemplateChild<gtk::Label>,
+        #[template_child]
         play_button: TemplateChild<gtk::Button>,
 
         #[property(get, set)]
@@ -46,11 +51,40 @@ mod imp {
 
     impl TvLiveCard {
         fn set_icon(&self) {
-            load_channel_icon(
-                self.obj().channel().map(|c| c.id()).as_deref(),
-                &self.icon,
-                64,
-            )
+            let Some(channel) = self.obj().channel() else {
+                return;
+            };
+
+            match channel.kind() {
+                ChannelKind::Zapp => load_channel_icon(Some(&channel.id()), &self.icon, 64),
+                ChannelKind::Fritz | ChannelKind::FritzRadio => {
+                    self.set_fritz_icon(&channel);
+
+                    // the logo is downloaded after the card was created
+                    let card = self.obj().downgrade();
+                    channel.connect_logo_notify(move |channel| {
+                        if let Some(card) = card.upgrade() {
+                            card.imp().set_fritz_icon(channel);
+                        }
+                    });
+                }
+            }
+        }
+
+        fn set_fritz_icon(&self, channel: &ChannelObject) {
+            match channel.logo() {
+                Some(logo) => {
+                    self.icon.remove_css_class("dim-label");
+                    self.icon.set_paintable(Some(&logo));
+                }
+                None => {
+                    self.icon.add_css_class("dim-label");
+                    self.icon.set_icon_name(Some(match channel.kind() {
+                        ChannelKind::FritzRadio => "audio-x-generic-symbolic",
+                        _ => "tv-symbolic",
+                    }));
+                }
+            }
         }
     }
 
@@ -65,13 +99,22 @@ mod imp {
 
             klass.install_action_async("card.play", None, |slf, _, _| async move {
                 let channel = slf.channel().unwrap();
-                TvApplication::get()
-                    .play(VideoInfo::Live {
-                        title: channel.name(),
-                        uri: channel.stream_url(),
-                        channel_id: channel.id(),
-                    })
-                    .await
+                match channel.kind() {
+                    ChannelKind::Zapp => {
+                        TvApplication::get()
+                            .play(VideoInfo::Live {
+                                title: channel.name(),
+                                uri: channel.stream_url(),
+                                channel_id: channel.id(),
+                            })
+                            .await
+                    }
+                    ChannelKind::Fritz | ChannelKind::FritzRadio => {
+                        if let Err(e) = mpv::play(&channel.name(), &channel.stream_url()).await {
+                            show_error(e);
+                        }
+                    }
+                }
             });
         }
 
@@ -94,6 +137,13 @@ mod imp {
             self.subtitle.connect_label_notify(|subtitle| {
                 subtitle.set_visible(!subtitle.label().is_empty())
             });
+
+            // channels of a FRITZ!Box may have no programme information
+            self.description.connect_label_notify(|description| {
+                description.set_visible(!description.label().is_empty())
+            });
+            self.next
+                .connect_label_notify(|next| next.set_visible(!next.label().is_empty()));
 
             self.revealer.connect_child_revealed_notify(|revealer| {
                 revealer.set_visible(revealer.is_child_revealed())

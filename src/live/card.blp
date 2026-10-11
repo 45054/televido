@@ -116,15 +116,30 @@ template $TvLiveCard: Gtk.ListBoxRow {
       reveal-child: bind template.expanded;
       transition-type: none;
 
-      Gtk.Label description {
-        label: bind template.channel as <$ChannelObject>.description;
-        halign: start;
-        use-markup: true;
-        wrap: true;
+      Gtk.Box {
+        orientation: vertical;
+        spacing: 6;
 
-        styles [
-          "body"
-        ]
+        Gtk.Label description {
+          label: bind template.channel as <$ChannelObject>.description;
+          halign: start;
+          use-markup: true;
+          wrap: true;
+
+          styles [
+            "body"
+          ]
+        }
+
+        Gtk.Label next {
+          label: bind template.channel as <$ChannelObject>.next;
+          halign: start;
+          wrap: true;
+
+          styles [
+            "dim-label"
+          ]
+        }
       }
     }
   }

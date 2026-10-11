@@ -5,7 +5,9 @@
 //!
 //! The FRITZ!Box only serves one stream per client, so there is at most one
 //! mpv process at a time: starting a new channel terminates the previous
-//! process first (mpv then sends an RTSP TEARDOWN to free the tuner).
+//! process first (mpv then sends an RTSP TEARDOWN to free the tuner). For
+//! the same reason, reading the programme guide is paused while a channel is
+//! playing, see [`crate::fritzbox::Epg`].
 
 use std::{cell::RefCell, ffi::OsStr, time::Duration};
 
@@ -13,7 +15,12 @@ use adw::{gio, glib, prelude::*};
 use futures_util::future::{select, Either};
 use gettextrs::gettext;
 
-use crate::{application::TvApplication, settings::TvSettings, utils::spawn, window::TvWindow};
+use crate::{
+    application::TvApplication,
+    settings::TvSettings,
+    utils::{spawn, tokio},
+    window::TvWindow,
+};
 
 pub const MPV: &str = "mpv";
 
@@ -35,6 +42,21 @@ pub fn is_installed() -> bool {
 
 /// Plays `uri` in a new mpv process, replacing the currently running one.
 pub async fn play(title: &str, uri: &str) -> eyre::Result<()> {
+    // the programme guide needs the tuner, too
+    let tuner = TvApplication::get().fritzbox().epg().tuner();
+    {
+        let tuner = tuner.clone();
+        tokio(async move { tuner.begin_playback().await }).await;
+    }
+
+    let result = start(title, uri).await;
+    if result.is_err() {
+        tuner.end_playback();
+    }
+    result
+}
+
+async fn start(title: &str, uri: &str) -> eyre::Result<()> {
     stop().await;
 
     if !is_installed() {
@@ -134,6 +156,7 @@ async fn watch(process: gio::Subprocess, title: String) {
         return;
     }
     CURRENT.with(|current| current.take());
+    TvApplication::get().fritzbox().epg().tuner().end_playback();
 
     if !process.has_exited() {
         return;
