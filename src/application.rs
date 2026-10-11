@@ -284,6 +284,7 @@ impl TvApplication {
         self.set_accels_for_action("app.quit", &["<primary>q"]);
         self.set_accels_for_action("window.close", &["<primary>w"]);
         self.set_accels_for_action("window.reload", &["F5", "Reload"]);
+        self.set_accels_for_action("window.search", &["<primary>f"]);
         self.set_accels_for_action("window.show-live", &["<primary>l"]);
         self.set_accels_for_action("window.show-mediathek", &["<primary>m"]);
         self.set_accels_for_action("window.show-fritztv", &["<primary>t"]);

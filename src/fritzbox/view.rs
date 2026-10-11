@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 use std::{
-    cell::{Cell, RefCell},
+    cell::{Cell, OnceCell, RefCell},
     rc::Rc,
 };
 
@@ -11,7 +11,7 @@ use gettextrs::{gettext, ngettext};
 
 use crate::{
     application::TvApplication,
-    live::{ChannelKind, ChannelObject, TvLiveCard},
+    live::{channel_filter, ChannelKind, ChannelObject, TvLiveCard},
     settings::TvSettings,
     utils::{format_timestamp_time, spawn, tokio},
 };
@@ -32,6 +32,10 @@ mod imp {
         stack: TemplateChild<gtk::Stack>,
         #[template_child]
         error_page: TemplateChild<adw::StatusPage>,
+        #[template_child]
+        search_entry: TemplateChild<gtk::SearchEntry>,
+        #[template_child]
+        results_stack: TemplateChild<gtk::Stack>,
         #[template_child]
         tv_group: TemplateChild<adw::PreferencesGroup>,
         #[template_child]
@@ -54,6 +58,10 @@ mod imp {
         lists: RefCell<Vec<ChannelList>>,
         /// Incremented on every reload to discard outdated results.
         generation: Cell<u64>,
+
+        filter: OnceCell<gtk::CustomFilter>,
+        /// The groups and their channels that match the filter.
+        filtered: RefCell<Vec<(adw::PreferencesGroup, gtk::FilterListModel)>>,
 
         /// The cards' channels of the last reload.
         channel_objects: RefCell<Vec<ChannelObject>>,
@@ -128,6 +136,7 @@ mod imp {
         ) -> Vec<(ChannelList, String, ChannelObject)> {
             let mut logos = Vec::new();
             let mut objects = Vec::new();
+            let mut filtered = Vec::new();
 
             for (list, group, list_box) in [
                 (ChannelList::Tv, &self.tv_group, &self.tv_list),
@@ -136,12 +145,6 @@ mod imp {
                 (ChannelList::Radio, &self.radio_group, &self.radio_list),
             ] {
                 let channels = channels.get(list);
-
-                group.set_visible(!channels.is_empty());
-                group.set_description(Some(
-                    &ngettext("{} channel", "{} channels", channels.len() as u32)
-                        .replace("{}", &channels.len().to_string()),
-                ));
 
                 let kind = match list {
                     ChannelList::Radio => ChannelKind::FritzRadio,
@@ -154,18 +157,53 @@ mod imp {
                     logos.push((list, channel.name.clone(), object.clone()));
                     objects.push(object);
                 }
-                list_box.bind_model(Some(&store), |channel| {
+                let model = gtk::FilterListModel::new(Some(store), self.filter.get().cloned());
+                model.connect_items_changed(glib::clone!(
+                    #[weak(rename_to = slf)]
+                    self,
+                    move |_, _, _, _| slf.update_groups()
+                ));
+                list_box.bind_model(Some(&model), |channel| {
                     glib::Object::builder::<TvLiveCard>()
                         .property("channel", channel)
                         .build()
                         .upcast()
                 });
+                filtered.push((group.get(), model));
             }
 
+            self.filtered.replace(filtered);
+            self.update_groups();
             self.channel_objects.replace(objects);
             self.refresh_epg();
 
             logos
+        }
+
+        /// Shows the groups with channels that match the filter, and how
+        /// many, or a hint if there are none.
+        fn update_groups(&self) {
+            let mut any = false;
+            for (group, model) in self.filtered.borrow().iter() {
+                let matches = model.n_items();
+                any |= matches > 0;
+                group.set_visible(matches > 0);
+                group.set_description(Some(
+                    &ngettext("{} channel", "{} channels", matches)
+                        .replace("{}", &matches.to_string()),
+                ));
+            }
+
+            let page = if any || self.search_entry.text().is_empty() {
+                "list"
+            } else {
+                "no-matches"
+            };
+            self.results_stack.set_visible_child_name(page);
+        }
+
+        pub(super) fn focus_search(&self) {
+            self.search_entry.grab_focus();
         }
 
         /// (Re)starts reading the programme guide of the channels of the
@@ -302,6 +340,12 @@ mod imp {
 
             let settings = TvSettings::get();
 
+            self.filter
+                .set(channel_filter(&self.search_entry))
+                .expect("the view is constructed once");
+            // typing anywhere in the view filters the channels
+            self.search_entry.set_key_capture_widget(Some(&*self.obj()));
+
             let slf = self.to_owned();
             spawn(async move { slf.reload().await });
 
@@ -383,6 +427,10 @@ impl TvFritzView {
     pub fn reload(&self) {
         let slf = self.imp().to_owned();
         spawn(async move { slf.reload().await });
+    }
+
+    pub fn focus_search(&self) {
+        self.imp().focus_search();
     }
 }
 

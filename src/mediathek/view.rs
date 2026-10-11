@@ -32,7 +32,7 @@ mod imp {
         #[template_child]
         search_toolbar: TemplateChild<gtk::Box>,
         #[template_child]
-        search_entry: TemplateChild<gtk::SearchEntry>,
+        pub(super) search_entry: TemplateChild<gtk::SearchEntry>,
         #[template_child]
         status_page: TemplateChild<adw::StatusPage>,
         #[template_child]
@@ -195,6 +195,10 @@ glib::wrapper! {
 }
 
 impl TvMediathekView {
+    pub fn focus_search(&self) {
+        self.imp().search_entry.grab_focus();
+    }
+
     fn client(&self) -> Arc<Mediathek> {
         self.imp()
             .client
