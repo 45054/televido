@@ -5,7 +5,7 @@
   "sdk": "org.gnome.Sdk",
   "sdk-extensions": [
     "org.freedesktop.Sdk.Extension.rust-stable",
-    "org.freedesktop.Sdk.Extension.llvm20"
+    "org.freedesktop.Sdk.Extension.llvm21"
   ],
   "command": "televido",
   "finish-args": [
@@ -22,7 +22,7 @@
     "--talk-name=org.nickvision.tubeconverter"
   ],
   "build-options": {
-    "append-path": "/usr/lib/sdk/rust-stable/bin:/usr/lib/sdk/llvm20/bin",
+    "append-path": "/usr/lib/sdk/rust-stable/bin:/usr/lib/sdk/llvm21/bin",
     "build-args": ["--share=network"],
     "env": {
       "CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER": "clang",
@@ -62,6 +62,7 @@
           "type": "git",
           "url": "https://github.com/LuaJIT/LuaJIT.git",
           "branch": "v2.1",
+          "commit": "c6ffc141a8762b41703f9287d63d93622a13dd8f",
           "disable-shallow-clone": true
         }
       ]
@@ -74,7 +75,7 @@
         {
           "type": "git",
           "url": "https://github.com/libass/libass.git",
-          "tag": "0.17.3"
+          "tag": "0.17.5"
         }
       ]
     },
@@ -89,7 +90,7 @@
         {
           "type": "git",
           "url": "https://code.videolan.org/videolan/libplacebo.git",
-          "tag": "v7.360.0"
+          "tag": "v7.360.1"
         }
       ]
     },
@@ -118,7 +119,7 @@
         {
           "type": "git",
           "url": "https://github.com/mpv-player/mpv.git",
-          "tag": "v0.40.0"
+          "tag": "v0.41.0"
         }
       ]
     },

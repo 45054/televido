@@ -10,7 +10,27 @@ on:
     branches: [main]
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
+  rust:
+    name: "Rust (fmt, clippy)"
+    runs-on: ubuntu-latest
+    container:
+      image: archlinux:latest
+    steps:
+      - name: Install dependencies
+        run: pacman -Syu --noconfirm --needed base-devel git rust gtk4 libadwaita blueprint-compiler meson gettext
+      - uses: actions/checkout@v7
+      # generates src/config.rs and the resources compiled into the binary
+      - name: Configure
+        run: meson setup _build -Dprofile=development
+      - name: Check formatting
+        run: cargo fmt --check
+      - name: Clippy
+        run: cargo clippy --locked --all-targets -- -D warnings
+
   flatpak:
     name: "Flatpak"
     container:
@@ -26,12 +46,11 @@ jobs:
       fail-fast: false
     runs-on: ${{ matrix.variant.runner }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: flatpak/flatpak-github-actions/flatpak-builder@v6
         with:
           bundle: televido.flatpak
           manifest-path: build-aux/de.k_bo.Televido.Devel.json
-          cache-key: flatpak-builder-${{ github.sha }}
           run-tests: true
           arch: ${{ matrix.variant.arch }}
           verbose: true

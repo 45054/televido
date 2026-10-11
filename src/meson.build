@@ -59,3 +59,11 @@ custom_target(
   ],
   depends: shortcuts_dialog,
 )
+
+test(
+  'Cargo tests',
+  cargo,
+  args: ['test', cargo_opt],
+  env: cargo_env,
+  timeout: 1800,
+)
