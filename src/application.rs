@@ -85,13 +85,15 @@ impl TvApplication {
     pub fn new() -> Self {
         let slf: Self = glib::Object::builder()
             .property("application-id", APP_ID)
-            .property("resource-base-path", "/de/k_bo/televido")
+            .property("resource-base-path", "/io/github/_45054/TelevidoFritz")
             .build();
 
         APPLICATION.with(|app| {
             app.set(slf.clone())
                 .expect("TvApplication may only be created once")
         });
+
+        TvSettings::get().migrate_legacy();
 
         let live_channels = slf.live_channels();
         live_channels.set_load_fn({
@@ -291,7 +293,7 @@ impl TvApplication {
 
     fn show_about(&self) {
         let about = adw::AboutDialog::from_appdata(
-            "/de/k_bo/televido/de.k_bo.Televido.metainfo.xml",
+            "/io/github/_45054/TelevidoFritz/io.github._45054.TelevidoFritz.metainfo.xml",
             (PROFILE == "Release").then_some(VERSION),
         );
 

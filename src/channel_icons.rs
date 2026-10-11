@@ -54,8 +54,9 @@ pub fn load_channel_icon(channel_id: Option<&str>, image: &gtk::Image, size: i32
         size: i32,
         color_scheme: ColorScheme,
     ) -> eyre::Result<gdk::Texture> {
-        let resource =
-            format!("/de/k_bo/televido/icons/scalable/channels/{color_scheme}/{icon_name}");
+        let resource = format!(
+            "/io/github/_45054/TelevidoFritz/icons/scalable/channels/{color_scheme}/{icon_name}"
+        );
 
         // load image manually with given size to avoid blurriness caused by scaling after rasterization
         gdk_pixbuf::Pixbuf::from_resource_at_scale(&resource, size, size, true)

@@ -1,5 +1,5 @@
 {
-  "id": "de.k_bo.Televido.Devel",
+  "id": "io.github._45054.TelevidoFritz.Devel",
   "runtime": "org.gnome.Platform",
   "runtime-version": "50",
   "sdk": "org.gnome.Sdk",

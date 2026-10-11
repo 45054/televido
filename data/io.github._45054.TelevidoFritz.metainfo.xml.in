@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <component type="desktop-application">
-	<id>de.k_bo.Televido</id>
+	<id>io.github._45054.TelevidoFritz</id>
 	<metadata_license>CC0-1.0</metadata_license>
 	<project_license>GPL-3.0-or-later</project_license>
 	<name>Televido</name>
@@ -25,10 +25,10 @@
 			downloaders: Parabolic.
 		</p>
 	</description>
-	<developer id="de.k-bo">
+	<developer id="io.github._45054">
 		<name translate="no">d-k-bo, Televido contributors</name>
 	</developer>
-	<launchable type="desktop-id">de.k_bo.Televido.desktop</launchable>
+	<launchable type="desktop-id">io.github._45054.TelevidoFritz.desktop</launchable>
 	<screenshots>
 		<screenshot type="default">
 			<image>https://raw.githubusercontent.com/45054/televido-fritz/main/data/screenshots/1.png</image>
@@ -76,6 +76,7 @@
 					<li>Filter the live and FritzTV channels by name while typing</li>
 					<li>Play all videos with mpv instead of the integrated player</li>
 					<li>Show the keyboard shortcuts in the new shortcuts dialog</li>
+					<li>Use the app ID io.github._45054.TelevidoFritz instead of upstream's de.k_bo.Televido and take over its settings</li>
 				</ul>
 			</description>
 		</release>
