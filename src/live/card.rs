@@ -210,5 +210,6 @@ mod imp {
 
 glib::wrapper! {
     pub struct TvLiveCard(ObjectSubclass<imp::TvLiveCard>)
-        @extends gtk::Widget, gtk::ListBoxRow;
+        @extends gtk::Widget, gtk::ListBoxRow,
+        @implements gtk::Accessible, gtk::Buildable, gtk::ConstraintTarget, gtk::Actionable;
 }

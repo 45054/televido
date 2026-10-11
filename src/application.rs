@@ -83,7 +83,6 @@ impl TvApplication {
     pub fn new() -> Self {
         let slf: Self = glib::Object::builder()
             .property("application-id", APP_ID)
-            .property("flags", gio::ApplicationFlags::FLAGS_NONE)
             .property("resource-base-path", "/de/k_bo/televido")
             .build();
 
