@@ -15,14 +15,13 @@ run_command(
   check: true
 )
 
-help_overlay = custom_target(
-  'help-overlay',
-  input: files('help-overlay.blp'),
+shortcuts_dialog = custom_target(
+  'shortcuts-dialog',
+  input: files('shortcuts-dialog.blp'),
   output: '.',
   command: [
     find_program('blueprint-compiler'), 'batch-compile', '@OUTPUT@', '@CURRENT_SOURCE_DIR@', '@INPUT@', '&&',
-    'mkdir', '-p', meson.project_source_root() / 'data/resources/gtk/', '&&',
-    'mv', meson.project_build_root() / 'src' /'help-overlay.ui', meson.project_source_root() / 'data/resources/gtk/'
+    'mv', meson.project_build_root() / 'src' / 'shortcuts-dialog.ui', meson.project_source_root() / 'data/resources/'
   ],
 )
 
@@ -56,5 +55,5 @@ custom_target(
     cargo, 'build', cargo_opt, '&&',
     'cp', meson.project_source_root() / 'target' / rust_target / meson.project_name(), '@OUTPUT@',
   ],
-  depends: help_overlay,
+  depends: shortcuts_dialog,
 )

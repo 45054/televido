@@ -13,7 +13,7 @@ src/fritzbox/m3u.rs
 src/fritzbox/mod.rs
 src/fritzbox/view.blp
 src/fritzbox/view.rs
-src/help-overlay.blp
+src/shortcuts-dialog.blp
 src/launcher/application_proxy.rs
 src/launcher/mod.rs
 src/launcher/selector.blp
