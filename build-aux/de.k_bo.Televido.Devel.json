@@ -83,7 +83,8 @@
       "buildsystem": "meson",
       "config-opts": [
         "-Ddemos=false",
-        "-Dtests=false"
+        "-Dtests=false",
+        "-Dvulkan=disabled"
       ],
       "sources": [
         {
