@@ -69,7 +69,7 @@ TELEVIDO_BRANCH=my-branch makepkg -si
 TELEVIDO_SOURCE="file://$(git rev-parse --show-toplevel)" TELEVIDO_BRANCH="$(git branch --show-current)" makepkg -si
 ```
 
-When switching `TELEVIDO_SOURCE`, delete the cached clone `build-aux/arch/televido/` first. Note that makepkg updates the `pkgver` line in the PKGBUILD on every build.
+When switching `TELEVIDO_SOURCE`, delete the cached clone `build-aux/arch/televido-fritz/` first. Note that makepkg updates the `pkgver` line in the PKGBUILD on every build.
 
 ## Channel logos
 

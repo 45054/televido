@@ -6,7 +6,7 @@
 version = 1
 SPDX-PackageName = "televido-fritz"
 SPDX-PackageSupplier = "Televido contributors"
-SPDX-PackageDownloadLocation = "https://github.com/45054/televido"
+SPDX-PackageDownloadLocation = "https://github.com/45054/televido-fritz"
 
 [[annotations]]
 path = ["data/icons/hicolor/**/apps/**.svg", "data/de.k_bo.Televido.Source.svg"]
