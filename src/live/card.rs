@@ -71,6 +71,45 @@ mod imp {
             }
         }
 
+        /// Shows how far the current show has progressed.
+        fn update_progress(&self) {
+            let Some(channel) = self.obj().channel() else {
+                return;
+            };
+            let start_time = channel.start_time();
+            let end_time = channel.end_time();
+            let Ok(now) = glib::DateTime::now_local() else {
+                return;
+            };
+
+            if start_time == 0 || end_time == 0 {
+                self.progress.set_visible(false);
+            } else {
+                let fraction = (((now.to_unix() - start_time) as f64)
+                    / ((end_time - start_time) as f64))
+                    .max(0.0);
+                self.progress.set_fraction(fraction);
+                self.progress.set_visible(true);
+            }
+        }
+
+        /// Updates the progress bar as soon as the show of the channel
+        /// changes, e.g. when the programme guide of a FRITZ!Box channel
+        /// arrives after the card was created.
+        fn watch_progress(&self, channel: &ChannelObject) {
+            let update = {
+                let card = self.obj().downgrade();
+                move |_: &ChannelObject| {
+                    if let Some(card) = card.upgrade() {
+                        card.imp().update_progress();
+                    }
+                }
+            };
+            channel.connect_start_time_notify(update.clone());
+            channel.connect_end_time_notify(update);
+            self.update_progress();
+        }
+
         fn set_fritz_icon(&self, channel: &ChannelObject) {
             match channel.logo() {
                 Some(logo) => {
@@ -128,8 +167,12 @@ mod imp {
         fn constructed(&self) {
             self.parent_constructed();
 
-            self.obj()
-                .connect_channel_notify(|slf| slf.imp().set_icon());
+            self.obj().connect_channel_notify(|slf| {
+                slf.imp().set_icon();
+                if let Some(channel) = slf.channel() {
+                    slf.imp().watch_progress(&channel);
+                }
+            });
 
             self.title
                 .connect_label_notify(|title| title.set_visible(!title.label().is_empty()));
@@ -149,29 +192,12 @@ mod imp {
                 revealer.set_visible(revealer.is_child_revealed())
             });
 
-            // update progress bar every 10 seconds
+            // the progress advances every 10 seconds
             let slf = self.downgrade();
             spawn(async move {
                 loop {
                     let Some(slf) = slf.upgrade() else { break };
-
-                    if let Some(channel) = slf.channel.borrow().as_ref() {
-                        let start_time = channel.start_time();
-                        let end_time = channel.end_time();
-                        let Ok(now) = glib::DateTime::now_local() else {
-                            continue;
-                        };
-
-                        if start_time == 0 || end_time == 0 {
-                            slf.progress.set_visible(false);
-                        } else {
-                            let fraction = (((now.to_unix() - start_time) as f64)
-                                / ((end_time - start_time) as f64))
-                                .max(0.0);
-                            slf.progress.set_fraction(fraction);
-                            slf.progress.set_visible(true);
-                        }
-                    }
+                    slf.update_progress();
                     tokio(async { tokio::time::sleep(Duration::from_secs(10)).await }).await;
                 }
             });
