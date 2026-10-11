@@ -11,7 +11,7 @@ publish = false
 adw = { package = "libadwaita", version = "0.7.1", features = ["v1_5"] }
 clapper = { git = "https://gitlab.gnome.org/JanGernert/clapper-rs.git", version = "0.1.0" }
 clapper-gtk = { git = "https://gitlab.gnome.org/JanGernert/clapper-rs.git", version = "0.1.0" }
-eyre = "0.6.12"
+eyre = "0.6.14"
 futures-util = "0.3.31"
 gettext-rs = { version = "0.7", features = ["gettext-system"] }
 gsettings-macro = "0.2.1"
