@@ -113,8 +113,10 @@ fn decode_utf8(bytes: &[u8]) -> String {
 fn decode_ucs2(bytes: &[u8]) -> String {
     char::decode_utf16(
         bytes
-            .chunks_exact(2)
-            .map(|pair| u16::from_be_bytes([pair[0], pair[1]])),
+            .as_chunks::<2>()
+            .0
+            .iter()
+            .map(|&pair| u16::from_be_bytes(pair)),
     )
     .map(|c| c.unwrap_or(char::REPLACEMENT_CHARACTER))
     .filter_map(without_control_codes)

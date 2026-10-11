@@ -39,7 +39,7 @@ impl SectionAssembler {
     /// Data that isn't aligned to 188-byte packets is ignored.
     pub fn push_data(&mut self, data: &[u8]) -> Vec<Section> {
         let mut sections = Vec::new();
-        for packet in data.chunks_exact(PACKET_SIZE) {
+        for packet in data.as_chunks::<PACKET_SIZE>().0 {
             self.push_packet(packet, &mut sections);
         }
         sections

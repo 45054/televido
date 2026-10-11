@@ -61,7 +61,9 @@ impl Pat {
         }
         let programs = section
             .body()
-            .chunks_exact(4)
+            .as_chunks::<4>()
+            .0
+            .iter()
             .filter_map(|entry| {
                 let service_id = u16::from_be_bytes([entry[0], entry[1]]);
                 let pid = u16::from_be_bytes([entry[2] & 0x1F, entry[3]]);
