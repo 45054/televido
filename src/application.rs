@@ -278,12 +278,15 @@ impl TvApplication {
         ]);
 
         self.set_accels_for_action("app.quit", &["<primary>q"]);
+        self.set_accels_for_action("app.preferences", &["<primary>comma"]);
         self.set_accels_for_action("window.close", &["<primary>w"]);
-        self.set_accels_for_action("window.reload", &["F5", "Reload"]);
+        self.set_accels_for_action("window.reload", &["<primary>r", "F5", "Reload"]);
         self.set_accels_for_action("window.search", &["<primary>f"]);
-        self.set_accels_for_action("window.show-live", &["<primary>l"]);
-        self.set_accels_for_action("window.show-mediathek", &["<primary>m"]);
-        self.set_accels_for_action("window.show-fritztv", &["<primary>t"]);
+        // like switching tabs, Ctrl+L and Ctrl+T are reserved for the
+        // location and new tabs in GNOME
+        self.set_accels_for_action("window.show-live", &["<alt>1"]);
+        self.set_accels_for_action("window.show-mediathek", &["<alt>2"]);
+        self.set_accels_for_action("window.show-fritztv", &["<alt>3"]);
     }
 
     fn show_about(&self) {
@@ -293,6 +296,8 @@ impl TvApplication {
         );
 
         about.set_version(VERSION);
+        // translators: replace with your names, one per line
+        about.set_translator_credits(&gettext("translator-credits"));
 
         about.present(Some(&self.window()));
     }

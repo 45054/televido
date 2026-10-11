@@ -22,6 +22,20 @@ template $TvLiveChannelSelectorRow: Adw.ActionRow {
     state: bind template.visible bidirectional;
   }
 
+  // an alternative to dragging, e.g. for the keyboard
+  [suffix]
+  Gtk.MenuButton {
+    icon-name: "view-more-symbolic";
+    tooltip-text: _("Move");
+    valign: center;
+    menu-model: move_menu;
+    visible: bind template.visible;
+
+    styles [
+      "flat"
+    ]
+  }
+
   Gtk.DragSource drag_source {
     actions: move;
     prepare => $drag_prepare() swapped;
@@ -32,5 +46,19 @@ template $TvLiveChannelSelectorRow: Adw.ActionRow {
     actions: move;
     formats: "TvLiveChannelSelectorRow";
     drop => $drop() swapped;
+  }
+}
+
+menu move_menu {
+  section {
+    item {
+      label: _("Move Up");
+      action: "row.move-up";
+    }
+
+    item {
+      label: _("Move Down");
+      action: "row.move-down";
+    }
   }
 }

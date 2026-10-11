@@ -9,10 +9,11 @@ template $TvFritzView: Adw.Bin {
     Gtk.StackPage {
       name: "spinner";
 
-      child: Gtk.Spinner spinner {
+      child: Adw.Spinner spinner {
         halign: center;
         valign: center;
-        spinning: true;
+        width-request: 32;
+        height-request: 32;
       };
     }
 

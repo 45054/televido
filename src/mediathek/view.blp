@@ -29,13 +29,13 @@ template $TvMediathekView: Adw.Bin {
 
           Gtk.ToggleButton {
             icon-name: "search-global-symbolic";
-            tooltip-text: _("Search everywhere");
+            tooltip-text: _("Search Everywhere");
             active: bind template.search_everywhere bidirectional;
           }
 
           Gtk.ToggleButton {
             icon-name: "month-symbolic";
-            tooltip-text: _("Include future shows");
+            tooltip-text: _("Include Future Shows");
             active: bind template.include-future bidirectional;
           }
 
@@ -53,13 +53,13 @@ template $TvMediathekView: Adw.Bin {
 
       Adw.StatusPage status_page {
         icon-name: "loupe-symbolic";
-        title: _("Search for content");
+        title: _("Search for Content");
         description: _("Start typing in the search bar to see a list of matching shows.\n\nThe search field supports <a href=\"https://github.com/mediathekview/mediathekviewweb/blob/master/README.md#erweiterte-suche\">MediathekViewWeb's advanced search syntax</a> (German).");
       }
 
       Adw.StatusPage nothing_found_view {
         icon-name: "item-missing-symbolic";
-        title: _("No results");
+        title: _("No Results");
         description: _("Try different search terms or adjust the search filters");
       }
 
@@ -105,7 +105,7 @@ template $TvMediathekView: Adw.Bin {
             Gtk.Button {
               visible: bind template.more-available;
               halign: center;
-              label: _("Load more");
+              label: _("Load More");
               action-name: "mediathek.load-more";
             }
           }

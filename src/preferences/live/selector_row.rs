@@ -86,7 +86,12 @@ mod imp {
 
         fn class_init(klass: &mut Self::Class) {
             klass.bind_template();
-            klass.bind_template_callbacks()
+            klass.bind_template_callbacks();
+
+            klass.install_action("row.move-up", None, |row, _, _| row.emit_move_requested(-1));
+            klass.install_action("row.move-down", None, |row, _, _| {
+                row.emit_move_requested(1)
+            });
         }
 
         fn instance_init(obj: &glib::subclass::InitializingObject<Self>) {
@@ -102,11 +107,17 @@ mod imp {
             load_channel_icon(Some(self.channel_id.borrow().as_ref()), &self.icon, 16);
         }
         fn signals() -> &'static [Signal] {
-            static SIGNALS: OnceLock<[Signal; 1]> = OnceLock::new();
+            static SIGNALS: OnceLock<[Signal; 2]> = OnceLock::new();
             SIGNALS.get_or_init(|| {
-                [Signal::builder("received-drop")
-                    .param_types([super::TvLiveChannelSelectorRow::static_type()])
-                    .build()]
+                [
+                    Signal::builder("received-drop")
+                        .param_types([super::TvLiveChannelSelectorRow::static_type()])
+                        .build(),
+                    // the row should move by the given number of positions
+                    Signal::builder("move-requested")
+                        .param_types([i32::static_type()])
+                        .build(),
+                ]
             })
         }
     }
@@ -131,6 +142,15 @@ impl TvLiveChannelSelectorRow {
     }
     pub fn emit_received_drop(&self, row: &TvLiveChannelSelectorRow) {
         self.emit_by_name::<()>("received-drop", &[&row]);
+    }
+    fn emit_move_requested(&self, offset: i32) {
+        self.emit_by_name::<()>("move-requested", &[&offset]);
+    }
+    pub fn connect_move_requested(&self, f: impl Fn(&Self, i32) + 'static) {
+        self.connect_local("move-requested", false, move |args| {
+            f(&args[0].get().unwrap(), args[1].get().unwrap());
+            None
+        });
     }
     pub fn connect_received_drop(&self, f: impl Fn(&Self, &TvLiveChannelSelectorRow) + 'static) {
         self.connect_local("received-drop", false, move |args| {

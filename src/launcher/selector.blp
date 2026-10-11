@@ -4,11 +4,10 @@ using Gtk 4.0;
 using Adw 1;
 
 template $ProgramSelector: Adw.Dialog {
-  can-close: false;
+  content-width: 480;
 
-  Gtk.Box {
-    orientation: vertical;
-
+  Adw.ToolbarView {
+    [top]
     Adw.HeaderBar {
       show-start-title-buttons: false;
       show-end-title-buttons: false;
@@ -21,7 +20,7 @@ template $ProgramSelector: Adw.Dialog {
 
       [end]
       Gtk.Button confirm_button {
-        label: _("Confirm");
+        label: _("Select");
         action-name: "program-selector.confirm";
         receives-default: true;
         sensitive: false;

@@ -49,6 +49,8 @@ mod imp {
             let Some(channel) = self.obj().channel() else {
                 return;
             };
+            self.icon
+                .update_property(&[gtk::accessible::Property::Label(&channel.name())]);
 
             match channel.kind() {
                 ChannelKind::Zapp => load_channel_icon(Some(&channel.id()), &self.icon, 64),
@@ -108,11 +110,11 @@ mod imp {
         fn set_fritz_icon(&self, channel: &ChannelObject) {
             match channel.logo() {
                 Some(logo) => {
-                    self.icon.remove_css_class("dim-label");
+                    self.icon.remove_css_class("dimmed");
                     self.icon.set_paintable(Some(&logo));
                 }
                 None => {
-                    self.icon.add_css_class("dim-label");
+                    self.icon.add_css_class("dimmed");
                     self.icon.set_icon_name(Some(match channel.kind() {
                         ChannelKind::FritzRadio => "audio-x-generic-symbolic",
                         _ => "tv-symbolic",
@@ -169,6 +171,13 @@ mod imp {
                     slf.imp().watch_progress(&channel);
                 }
             });
+
+            // tell assistive technologies that the row expands
+            let update_expanded = |slf: &super::TvLiveCard| {
+                slf.update_state(&[gtk::accessible::State::Expanded(Some(slf.expanded()))])
+            };
+            update_expanded(&self.obj());
+            self.obj().connect_expanded_notify(update_expanded);
 
             self.title
                 .connect_label_notify(|title| title.set_visible(!title.label().is_empty()));

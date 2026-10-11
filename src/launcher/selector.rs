@@ -193,9 +193,8 @@ mod imp {
 
             klass.install_property_action("program-selector.select-program", "selected-program");
             klass.install_action("program-selector.cancel", None, |slf, _, _| {
-                *slf.imp().program.borrow_mut() = None;
-
-                slf.close()
+                // `closed` cancels the selection
+                slf.close();
             });
             klass.install_action("program-selector.confirm", None, |slf, _, _| {
                 let Some(program) = slf.imp().program.take() else {
@@ -211,7 +210,7 @@ mod imp {
                     }
                 }
 
-                slf.close()
+                slf.close();
             });
         }
 
@@ -230,7 +229,8 @@ mod imp {
                 }
             });
 
-            self.obj().connect_close_attempt(|slf| slf.close());
+            // closing the dialog in any other way cancels the selection
+            self.obj().connect_closed(|slf| slf.cancel());
         }
         fn properties() -> &'static [glib::ParamSpec] {
             Self::derived_properties()
@@ -265,11 +265,11 @@ impl ProgramSelector {
 
         let (title, description) = match program_type {
             ExternalProgramType::Player => (
-                gettext("Select video player"),
+                gettext("Select Video Player"),
                 gettext("Select one of the following external programs to stream content."),
             ),
             ExternalProgramType::Downloader => (
-                gettext("Select video downloader"),
+                gettext("Select Video Downloader"),
                 gettext("Select one of the following external programs to download content."),
             ),
         };
@@ -277,7 +277,7 @@ impl ProgramSelector {
         slf.set_description(format!(
             "{description}\n<small>{}</small>",
             gettext(
-                "You can also specify a custom application ID (e.g. org.example.Application) of a different program that supports DBus activation, is able to open a https:// URI and is accessible from the context of this application.",
+                "You can also specify a custom application ID (e.g. org.example.Application) of a different program that supports D-Bus activation, is able to open a https:// URI and is accessible from the context of this application.",
             )
         ));
 
@@ -290,18 +290,16 @@ impl ProgramSelector {
 
         ProgramSelectFuture(slf.imp().future_data.clone()).await
     }
-    fn close(&self) {
-        {
-            let (selection, waker) = &mut *self.imp().future_data.borrow_mut();
-            if *selection == ProgramSelection::Pending {
-                *selection = ProgramSelection::Canceled;
+    /// Cancels the selection unless a program was selected.
+    fn cancel(&self) {
+        let (selection, waker) = &mut *self.imp().future_data.borrow_mut();
+        if *selection == ProgramSelection::Pending {
+            *selection = ProgramSelection::Canceled;
 
-                if let Some(waker) = waker.take() {
-                    waker.wake();
-                }
+            if let Some(waker) = waker.take() {
+                waker.wake();
             }
         }
-        self.force_close()
     }
 }
 

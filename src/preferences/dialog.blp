@@ -40,7 +40,7 @@ template $TvPreferencesDialog: Adw.PreferencesDialog {
       }
 
       Adw.SwitchRow {
-        title: _("Use external video player");
+        title: _("Use External Video Player");
         subtitle: _("Play live channels and the Mediathek with another player. FritzTV always uses mpv.");
         active: bind template.use-external-player bidirectional;
       }
@@ -79,7 +79,7 @@ template $TvPreferencesDialog: Adw.PreferencesDialog {
       name: "live-channels";
 
       Adw.ActionRow {
-        title: _("Select and reorder channels");
+        title: _("Select and Reorder Channels");
         activatable: true;
         activated => $select_live_channels() swapped;
 
@@ -107,14 +107,14 @@ template $TvPreferencesDialog: Adw.PreferencesDialog {
       }
 
       Adw.SwitchRow {
-        title: _("Separate HD and SD lists");
+        title: _("Separate HD and SD Lists");
         subtitle: _("Otherwise every channel is listed once in the best available quality");
         active: bind template.fritztv-separate-hd-sd bidirectional;
         sensitive: bind template.fritztv-enabled;
       }
 
       Adw.SwitchRow {
-        title: _("Show radio channels");
+        title: _("Show Radio Channels");
         active: bind template.fritztv-show-radio bidirectional;
         sensitive: bind template.fritztv-enabled;
       }
@@ -133,7 +133,7 @@ template $TvPreferencesDialog: Adw.PreferencesDialog {
       }
 
       Adw.SwitchRow {
-        title: _("Show programme guide");
+        title: _("Show Program Guide");
         subtitle: _("Reads the current and next shows from the cable signal. While no channel is playing, the FRITZ!Box is tuned briefly to each frequency.");
         active: bind template.fritztv-epg bidirectional;
         sensitive: bind template.fritztv-enabled;

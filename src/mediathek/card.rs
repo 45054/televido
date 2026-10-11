@@ -40,6 +40,10 @@ mod imp {
     }
     impl TvMediathekCard {
         fn set_icon(&self) {
+            if let Some(show) = self.obj().show() {
+                self.icon
+                    .update_property(&[gtk::accessible::Property::Label(&show.channel())]);
+            }
             load_channel_icon(
                 self.obj().show().map(|c| c.channel()).as_deref(),
                 &self.icon,
@@ -70,6 +74,13 @@ mod imp {
 
             self.obj().setup_actions();
             self.obj().connect_show_notify(|slf| slf.imp().set_icon());
+
+            // tell assistive technologies that the row expands
+            let update_expanded = |slf: &super::TvMediathekCard| {
+                slf.update_state(&[gtk::accessible::State::Expanded(Some(slf.expanded()))])
+            };
+            update_expanded(&self.obj());
+            self.obj().connect_expanded_notify(update_expanded);
 
             self.revealer.connect_child_revealed_notify(|revealer| {
                 revealer.set_visible(revealer.is_child_revealed())
