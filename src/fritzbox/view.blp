@@ -22,11 +22,16 @@ template $TvFritzView: Adw.Bin {
       child: Adw.ToolbarView {
         [top]
         Adw.Clamp {
-          Gtk.SearchEntry search_entry {
-            placeholder-text: _("Filter channels");
-            margin-top: 12;
-            margin-start: 12;
-            margin-end: 12;
+          Gtk.Box {
+            margin-top: 6;
+            margin-bottom: 6;
+            margin-start: 6;
+            margin-end: 6;
+
+            Gtk.SearchEntry search_entry {
+              placeholder-text: _("Filter channels");
+              hexpand: true;
+            }
           }
         }
 

@@ -78,7 +78,13 @@ fn start(title: &str, uri: &str, uses_tuner: bool) -> eyre::Result<()> {
         ));
     }
 
-    let arguments = TvSettings::get().mpv_arguments();
+    let settings = TvSettings::get();
+    let mut arguments = settings.mpv_arguments();
+    // tuned for the FRITZ!Box's RTSP stream, they only delay the start of
+    // HLS and MP4 videos
+    if uses_tuner {
+        arguments.extend(settings.mpv_arguments_fritzbox());
+    }
     let title_argument = format!("--force-media-title={title}");
 
     let argv: Vec<&OsStr> = [MPV]

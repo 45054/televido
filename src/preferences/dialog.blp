@@ -119,6 +119,19 @@ template $TvPreferencesDialog: Adw.PreferencesDialog {
         sensitive: bind template.fritztv-enabled;
       }
 
+      Adw.ActionRow {
+        title: _("mpv Arguments for FritzTV");
+        subtitle: bind template.mpv-arguments-fritzbox-summary;
+        subtitle-lines: 1;
+        activatable: true;
+        activated => $edit_mpv_arguments_fritzbox() swapped;
+        sensitive: bind template.fritztv-enabled;
+
+        Gtk.Image {
+          icon-name: "go-next-symbolic";
+        }
+      }
+
       Adw.SwitchRow {
         title: _("Show programme guide");
         subtitle: _("Reads the current and next shows from the cable signal. While no channel is playing, the FRITZ!Box is tuned briefly to each frequency.");

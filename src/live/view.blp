@@ -24,11 +24,16 @@ template $TvLiveView: Adw.Bin {
       child: Adw.ToolbarView {
         [top]
         Adw.Clamp {
-          Gtk.SearchEntry search_entry {
-            placeholder-text: _("Filter channels");
+          Gtk.Box {
             margin-top: 6;
+            margin-bottom: 6;
             margin-start: 6;
             margin-end: 6;
+
+            Gtk.SearchEntry search_entry {
+              placeholder-text: _("Filter channels");
+              hexpand: true;
+            }
           }
         }
 
@@ -39,10 +44,10 @@ template $TvLiveView: Adw.Bin {
             child: Gtk.ScrolledWindow {
               Adw.Clamp {
                 Gtk.ListBox channels_list {
-                  margin-top: 6;
-                  margin-bottom: 6;
-                  margin-start: 6;
-                  margin-end: 6;
+                  margin-top: 12;
+                  margin-bottom: 12;
+                  margin-start: 12;
+                  margin-end: 12;
                   valign: start;
 
                   styles [

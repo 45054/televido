@@ -2,6 +2,8 @@
 // SPDX-FileContributor: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+use std::cell::RefCell;
+
 use adw::{glib, gtk, prelude::*, subclass::prelude::*};
 use gettextrs::gettext;
 
@@ -10,11 +12,18 @@ use crate::settings::TvSettings;
 mod imp {
     use super::*;
 
-    #[derive(Debug, Default, gtk::CompositeTemplate)]
+    #[derive(Debug, Default, gtk::CompositeTemplate, glib::Properties)]
     #[template(file = "src/preferences/mpv_arguments.blp")]
+    #[properties(wrapper_type = super::TvMpvArgumentsPage)]
     pub struct TvMpvArgumentsPage {
         #[template_child]
+        arguments_group: TemplateChild<adw::PreferencesGroup>,
+        #[template_child]
         arguments_list: TemplateChild<gtk::ListBox>,
+
+        /// The settings key holding the edited arguments.
+        #[property(get, set, construct_only)]
+        key: RefCell<String>,
 
         settings: TvSettings,
     }
@@ -27,7 +36,7 @@ mod imp {
         }
         #[template_callback]
         fn restore_defaults(&self, #[rest] _: &[glib::Value]) {
-            self.settings.reset("mpv-arguments");
+            self.settings.reset(&self.key.borrow());
             self.load();
         }
     }
@@ -35,7 +44,7 @@ mod imp {
     impl TvMpvArgumentsPage {
         fn load(&self) {
             self.arguments_list.remove_all();
-            for argument in self.settings.mpv_arguments() {
+            for argument in self.settings.strv(&self.key.borrow()) {
                 self.append_row(&argument);
             }
         }
@@ -54,8 +63,12 @@ mod imp {
                 child = row.next_sibling();
             }
 
-            let arguments: Vec<&str> = arguments.iter().map(String::as_str).collect();
-            self.settings.set_mpv_arguments(&arguments);
+            if let Err(e) = self
+                .settings
+                .set_strv(&self.key.borrow(), arguments.as_slice())
+            {
+                tracing::error!("failed to save the mpv arguments: {e}");
+            }
         }
 
         fn append_row(&self, argument: &str) -> adw::EntryRow {
@@ -109,9 +122,16 @@ mod imp {
         }
     }
 
+    #[glib::derived_properties]
     impl ObjectImpl for TvMpvArgumentsPage {
         fn constructed(&self) {
             self.parent_constructed();
+            if self.key.borrow().as_str() == FRITZBOX_KEY {
+                self.obj().set_title(&gettext("mpv Arguments for FritzTV"));
+                self.arguments_group.set_description(Some(&gettext(
+                    "Added to the general mpv arguments when playing a FRITZ!Box channel, one argument per row. The defaults are tuned for the RTSP stream of the FRITZ!Box.",
+                )));
+            }
             self.load();
         }
     }
@@ -125,8 +145,12 @@ glib::wrapper! {
         @implements gtk::Accessible, gtk::Buildable, gtk::ConstraintTarget;
 }
 
+pub const GENERAL_KEY: &str = "mpv-arguments";
+pub const FRITZBOX_KEY: &str = "mpv-arguments-fritzbox";
+
 impl TvMpvArgumentsPage {
-    pub fn new() -> Self {
-        glib::Object::new()
+    /// Creates a page editing the string list in the settings key `key`.
+    pub fn new(key: &str) -> Self {
+        glib::Object::builder().property("key", key).build()
     }
 }
